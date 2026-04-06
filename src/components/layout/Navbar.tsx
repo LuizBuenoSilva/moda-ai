@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { signOut, useSession } from "next-auth/react";
 
 const links = [
   { href: "/estilista", label: "Estilista" },
@@ -15,6 +16,7 @@ const links = [
 export default function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   return (
     <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800/50">
@@ -38,6 +40,29 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {status === "authenticated" ? (
+            <div className="flex items-center gap-2 ml-3">
+              <Link
+                href="/conta"
+                className="px-3 py-2 rounded-lg text-sm text-zinc-300 hover:bg-zinc-800"
+              >
+                {session.user?.name ?? "Minha Conta"}
+              </Link>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="px-3 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+              >
+                Sair
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/entrar"
+              className="ml-3 px-4 py-2 rounded-lg text-sm font-medium gradient-bg text-white hover:opacity-90"
+            >
+              Entrar
+            </Link>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -72,6 +97,31 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {status === "authenticated" ? (
+            <>
+              <Link
+                href="/conta"
+                onClick={() => setOpen(false)}
+                className="block px-6 py-3 text-sm font-medium border-b border-zinc-800/50 text-zinc-300 hover:bg-zinc-800/50"
+              >
+                Minha Conta
+              </Link>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="w-full text-left px-6 py-3 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+              >
+                Sair
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/entrar"
+              onClick={() => setOpen(false)}
+              className="block px-6 py-3 text-sm font-medium border-b border-zinc-800/50 text-purple-300 hover:bg-zinc-800/50"
+            >
+              Entrar
+            </Link>
+          )}
         </div>
       )}
     </nav>

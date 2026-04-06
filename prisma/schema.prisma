@@ -14,6 +14,8 @@ model Pasta {
   nome      String
   tipo      String   // "looks" ou "designs"
   cor       String   @default("#a855f7")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   looks     Look[]
   designs   PecaDesign[]
@@ -33,6 +35,8 @@ model Look {
   outfitJson    String   // JSON completo para avatar 3D
   pastaId       String?
   pasta         Pasta?   @relation(fields: [pastaId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   pecas         Peca[]
@@ -69,5 +73,84 @@ model PecaDesign {
   inspiracao       String?
   pastaId          String?
   pasta            Pasta?   @relation(fields: [pastaId], references: [id])
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt        DateTime @default(now())
+}
+
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  image           String?
+  passwordHash    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  accounts        Account[]
+  sessions        Session[]
+  pastas          Pasta[]
+  looks           Look[]
+  designs         PecaDesign[]
+  avatarProfile   AvatarProfile?
+  homeLooks       HomeLook[]
+}
+
+model Account {
+  id                 String   @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+  user               User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model AvatarProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  skinTone   String?
+  hairStyle  String?
+  hairColor  String?
+  bodyType   String?
+  height     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HomeLook {
+  id          String   @id @default(cuid())
+  userId      String
+  nome        String
+  descricao   String?
+  imageUrl    String?
+  tags        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

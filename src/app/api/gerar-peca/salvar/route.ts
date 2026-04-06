@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getRequiredUser } from "@/lib/auth-helpers";
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId, unauthorized } = await getRequiredUser();
+    if (!userId) return unauthorized!;
+
     const body = await req.json();
 
     const design = await prisma.pecaDesign.create({
@@ -19,6 +23,7 @@ export async function POST(req: NextRequest) {
         sugestaoUso: body.sugestaoUso,
         cores: JSON.stringify(body.cores),
         inspiracao: body.inspiracao || null,
+        userId,
       },
     });
 

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getRequiredUser } from "@/lib/auth-helpers";
 
 export async function GET() {
   try {
+    const { userId, unauthorized } = await getRequiredUser();
+    if (!userId) return unauthorized!;
+
     const looks = await prisma.look.findMany({
+      where: { userId },
       orderBy: { createdAt: "desc" },
       include: { pecas: true },
     });
@@ -19,6 +24,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId, unauthorized } = await getRequiredUser();
+    if (!userId) return unauthorized!;
+
     const body = await req.json();
 
     const look = await prisma.look.create({
@@ -33,6 +41,7 @@ export async function POST(req: NextRequest) {
         explicacao: body.explicacao,
         cores: JSON.stringify(body.cores),
         outfitJson: JSON.stringify(body.outfitJson),
+        userId,
         pecas: {
           create: body.pecas.map((peca: {
             categoria: string;
