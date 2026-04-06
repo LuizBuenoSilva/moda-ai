@@ -4,9 +4,11 @@ import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import ProfilePhotoUpload from "@/components/auth/ProfilePhotoUpload";
 
 export default function EntrarPage() {
   const [isRegister, setIsRegister] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [callbackUrl, setCallbackUrl] = useState("/estilista");
@@ -27,7 +29,6 @@ export default function EntrarPage() {
     const name = String(form.get("name") ?? "").trim();
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
-    const image = String(form.get("image") ?? "").trim();
 
     try {
       if (isRegister) {
@@ -38,7 +39,7 @@ export default function EntrarPage() {
             name,
             email,
             password,
-            image: image || null,
+            image: profilePhoto,
           }),
         });
 
@@ -94,10 +95,10 @@ export default function EntrarPage() {
                 required
                 className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm outline-none focus:border-purple-500"
               />
-              <input
-                name="image"
-                placeholder="URL da foto de perfil (opcional)"
-                className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm outline-none focus:border-purple-500"
+              <ProfilePhotoUpload
+                photoDataUrl={profilePhoto}
+                onPhotoChange={setProfilePhoto}
+                disabled={loading}
               />
             </>
           )}
@@ -133,7 +134,11 @@ export default function EntrarPage() {
         </form>
 
         <button
-          onClick={() => setIsRegister((v) => !v)}
+          onClick={() => {
+            setIsRegister((v) => !v);
+            setProfilePhoto(null);
+            setError(null);
+          }}
           className="w-full mt-4 text-sm text-zinc-400 hover:text-zinc-200"
         >
           {isRegister ? "Já tenho conta" : "Ainda não tenho conta"}

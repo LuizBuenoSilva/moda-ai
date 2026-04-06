@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getRequiredUser } from "@/lib/auth-helpers";
+import { normalizeProfileImageInput } from "@/lib/profile-image-server";
 
 export async function GET() {
   const { userId, unauthorized } = await getRequiredUser();
@@ -20,7 +21,17 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const name = body.name ? String(body.name).trim() : undefined;
-    const image = body.image === null ? null : body.image ? String(body.image) : undefined;
+    let image: string | null | undefined = undefined;
+    if (body.image === null) {
+      image = null;
+    } else if (body.image !== undefined) {
+      try {
+        image = normalizeProfileImageInput(body.image);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Foto inválida";
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+    }
 
     const user = await prisma.user.update({
       where: { id: userId },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ProfilePhotoUpload from "@/components/auth/ProfilePhotoUpload";
 
 type HomeLook = {
   id: string;
@@ -108,7 +109,11 @@ export default function ContaPage() {
           <h2 className="text-lg font-semibold">Perfil</h2>
           <input value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm" placeholder="Nome" />
           <input value={email} readOnly className="w-full px-4 py-2.5 rounded-xl bg-zinc-800/70 border border-zinc-700 text-sm text-zinc-400" />
-          <input value={image} onChange={(e) => setImage(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm" placeholder="URL da foto de perfil (opcional)" />
+          <ProfilePhotoUpload
+            photoDataUrl={image || null}
+            onPhotoChange={(url) => setImage(url ?? "")}
+            disabled={saving}
+          />
           <button onClick={saveProfile} disabled={saving} className="px-4 py-2 rounded-xl gradient-bg text-white text-sm disabled:opacity-60">Salvar Perfil</button>
         </section>
 

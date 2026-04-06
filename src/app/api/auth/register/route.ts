@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { normalizeProfileImageInput } from "@/lib/profile-image-server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,7 +9,13 @@ export async function POST(req: NextRequest) {
     const name = String(body.name ?? "").trim();
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
-    const image = body.image ? String(body.image) : null;
+    let image: string | null = null;
+    try {
+      image = normalizeProfileImageInput(body.image ?? null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Foto inválida";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: "Nome, email e senha são obrigatórios" }, { status: 400 });
