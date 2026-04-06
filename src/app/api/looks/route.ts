@@ -10,8 +10,9 @@ export async function GET() {
     return NextResponse.json({ looks });
   } catch (error) {
     console.error("Erro ao buscar looks:", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Erro ao buscar looks" },
+      { error: "Erro ao buscar looks", detail: msg },
       { status: 500 }
     );
   }
@@ -63,8 +64,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ id: look.id, look });
   } catch (error) {
     console.error("Erro ao salvar look:", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Erro ao salvar look" },
+      { error: "Erro ao salvar look", detail: msg },
       { status: 500 }
     );
   }
