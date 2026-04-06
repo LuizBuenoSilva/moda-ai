@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ProfilePhotoUpload from "@/components/auth/ProfilePhotoUpload";
@@ -13,12 +13,19 @@ export default function EntrarPage() {
   const [error, setError] = useState<string | null>(null);
   const [callbackUrl, setCallbackUrl] = useState("/estilista");
   const router = useRouter();
+  const { status } = useSession();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const cb = params.get("callbackUrl");
     if (cb) setCallbackUrl(cb);
   }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(callbackUrl || "/estilista");
+    }
+  }, [status, callbackUrl, router]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
