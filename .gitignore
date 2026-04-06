@@ -5,8 +5,8 @@ node_modules
 .env.local
 .env.production.local
 
-# Prisma generated client
-/src/generated/prisma
+# Prisma client antigo / artefatos locais (client oficial em node_modules)
+src/generated/
 
 # SQLite local database
 prisma/dev.db

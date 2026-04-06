@@ -20,7 +20,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800/50">
       <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
         <Link href="/" className="text-2xl font-bold gradient-text">
-          MODA
+          Yuzo
         </Link>
 
         {/* Desktop */}

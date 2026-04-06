@@ -58,7 +58,7 @@ export default function Home() {
         </div>
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-6">
-            <span className="gradient-text">MODA</span>
+            <span className="gradient-text">Yuzo</span>
           </h1>
           <p className="text-xl sm:text-2xl text-zinc-400 mb-4">
             Seu Estilista Virtual com Inteligência Artificial
@@ -142,7 +142,7 @@ export default function Home() {
       <footer className="px-6 py-8 border-t border-zinc-800">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
           <span className="text-sm text-zinc-500">
-            MODA &copy; {new Date().getFullYear()} - Powered by Claude AI
+            Yuzo &copy; {new Date().getFullYear()} - Powered by Claude AI
           </span>
           <span className="text-sm text-zinc-600">
             Feito com Next.js + Three.js

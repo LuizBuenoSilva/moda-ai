@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MODA - Seu Estilista Virtual com IA",
+  title: "Yuzo - Seu Estilista Virtual com IA",
   description:
     "Gere looks personalizados com inteligência artificial, crie conceitos de moda e visualize em avatar 3D.",
 };
