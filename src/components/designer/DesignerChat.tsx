@@ -15,6 +15,8 @@ interface DesignerChatProps {
 }
 
 const QUICK_ACTIONS = [
+  { label: "Surpreenda-me", prompt: "Surpreenda-me com um redesign completamente único e criativo que eu nunca imaginaria" },
+  { label: "Me dê ideias", prompt: "Me dê 3 ideias criativas e únicas para transformar essa peça em algo especial" },
   { label: "Preto e branco", prompt: "Mude as cores para preto e branco com design minimalista" },
   { label: "Tons terrosos", prompt: "Use cores terrosas como caramelo, bege e marrom" },
   { label: "Neon vibrante", prompt: "Cores neon vibrantes com visual chamativo" },

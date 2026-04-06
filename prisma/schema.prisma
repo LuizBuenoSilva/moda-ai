@@ -71,6 +71,7 @@ model PecaDesign {
   sugestaoUso      String
   cores            String
   inspiracao       String?
+  svgSketch        String?  @db.Text
   pastaId          String?
   pasta            Pasta?   @relation(fields: [pastaId], references: [id])
   userId           String

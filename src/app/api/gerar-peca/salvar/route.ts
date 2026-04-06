@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
         sugestaoUso: body.sugestaoUso,
         cores: JSON.stringify(body.cores),
         inspiracao: body.inspiracao || null,
+        svgSketch: body.svgSketch || null,
         userId,
       },
     });

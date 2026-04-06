@@ -19,4 +19,5 @@ export interface PecaDesignGerada {
   sugestaoUso: string;
   cores: string[];
   inspiracao?: string;
+  svgSketch?: string;
 }

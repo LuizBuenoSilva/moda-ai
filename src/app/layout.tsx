@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import AuthSessionProvider from "@/components/providers/AuthSessionProvider";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
+import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,10 +16,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#a855f7",
+};
+
 export const metadata: Metadata = {
   title: "Yuzo - Seu Estilista Virtual com IA",
   description:
     "Gere looks personalizados com inteligência artificial, crie conceitos de moda e visualize em avatar 3D.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Yuzo",
+  },
 };
 
 export default function RootLayout({
@@ -34,6 +50,8 @@ export default function RootLayout({
         <AuthSessionProvider>
           <Navbar />
           <main className="flex-1">{children}</main>
+          <InstallPrompt />
+          <ServiceWorkerRegister />
         </AuthSessionProvider>
       </body>
     </html>

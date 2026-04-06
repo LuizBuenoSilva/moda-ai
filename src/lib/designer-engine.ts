@@ -112,10 +112,20 @@ export async function gerarPecaDesign(input: PecaDesignInput): Promise<PecaDesig
   try {
     const anthropic = new Anthropic();
 
-    const prompt = `Você é um designer de moda profissional. Crie um conceito visual para: Tipo: ${input.tipo}, Estilo: ${input.estilo}, Inspiração: ${input.inspiracao}, Cores: ${input.cores}, Detalhes: ${input.detalhes}.
+    const prompt = `Você é um designer de moda visionário e criativo. Seu trabalho é criar conceitos ÚNICOS e ORIGINAIS que nunca foram vistos antes. NÃO crie designs genéricos — cada peça deve ter personalidade própria, detalhes surpreendentes e uma história por trás.
+
+Crie um conceito visual para: Tipo: ${input.tipo}, Estilo: ${input.estilo}, Inspiração: ${input.inspiracao}, Cores: ${input.cores}, Detalhes: ${input.detalhes}.
+
+DIRETRIZES CRIATIVAS:
+- Invente detalhes únicos: costuras diferenciadas, recortes inesperados, texturas inovadoras
+- Proponha combinações de materiais surpreendentes
+- Adicione elementos que contem uma história ou transmitam uma emoção
+- Pense em acabamentos e aviamentos que tornem a peça especial
+- Seja específico nos elementos visuais: descreva padrões, posicionamento de detalhes, proporções
+- O promptImagem deve ser ultra-detalhado em inglês, descrevendo cada elemento visual da peça
 
 Responda APENAS JSON válido (sem markdown):
-{"nome":"...","tipo":"${input.tipo}","estilo":"${input.estilo}","descricao":"...","tecido":"...","corte":"...","textura":"...","elementosVisuais":"...","promptImagem":"A detailed English prompt for DALL-E/Stable Diffusion...","sugestaoUso":"...","cores":["#hex1","#hex2"],"inspiracao":"${input.inspiracao}"}`;
+{"nome":"...","tipo":"${input.tipo}","estilo":"${input.estilo}","descricao":"...","tecido":"...","corte":"...","textura":"...","elementosVisuais":"...","promptImagem":"Ultra-detailed English prompt describing every visual element...","sugestaoUso":"...","cores":["#hex1","#hex2"],"inspiracao":"${input.inspiracao}"}`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -364,15 +374,26 @@ export async function refinarPecaDesign(
   try {
     const anthropic = new Anthropic();
 
-    const systemPrompt = `Você é um designer de moda profissional ajudando a refinar um design de roupa.
+    const systemPrompt = `Você é um designer de moda visionário e extremamente criativo, ajudando a refinar um design de roupa.
 O design atual é:
 ${JSON.stringify(pecaAtual, null, 2)}
 
-O usuário vai pedir modificações. Aplique as mudanças solicitadas ao design.
+O usuário vai pedir modificações ou ideias. Você deve:
+1. Se pedirem modificações específicas: aplique com criatividade, adicionando detalhes surpreendentes
+2. Se pedirem ideias ou inspiração: proponha conceitos ÚNICOS e originais, explique sua visão criativa
+3. Se pedirem "surpreenda-me" ou algo vago: reinvente a peça com uma abordagem completamente nova
+4. SEMPRE adicione detalhes que tornem o design único — nunca entregue algo genérico
+
+DIRETRIZES CRIATIVAS:
+- Cada modificação deve trazer algo novo e especial à peça
+- Descreva texturas, padrões e detalhes com riqueza visual
+- Proponha combinações inesperadas de materiais e técnicas
+- O campo elementosVisuais deve ser rico e específico
+- O promptImagem deve descrever TODOS os detalhes visuais em inglês, como se pintasse a peça com palavras
 
 IMPORTANTE: Sua resposta deve ser APENAS um JSON válido (sem markdown, sem backticks) com esta estrutura exata:
 {
-  "resposta": "Breve resumo em português das mudanças feitas (1-2 frases)",
+  "resposta": "Resumo criativo em português das mudanças, explicando a visão por trás das escolhas (2-3 frases)",
   "peca": { ...o JSON completo da peça atualizada com TODOS os campos... }
 }
 

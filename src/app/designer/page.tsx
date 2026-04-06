@@ -16,10 +16,13 @@ function loadCachedPeca(): PecaDesignGerada | null {
   return null;
 }
 
+type MobileTab = "chat" | "preview";
+
 export default function DesignerPage() {
   const [peca, setPeca] = useState<PecaDesignGerada | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
 
   useEffect(() => {
     const cached = loadCachedPeca();
@@ -78,35 +81,73 @@ export default function DesignerPage() {
     return (
       <div className="h-[calc(100vh-64px)] flex flex-col">
         {/* Header bar */}
-        <div className="px-6 py-3 border-b border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="px-4 md:px-6 py-3 border-b border-zinc-800 flex items-center justify-between shrink-0">
           <div>
-            <h1 className="text-xl font-bold">
+            <h1 className="text-lg md:text-xl font-bold">
               <span className="gradient-text">Designer de Moda</span>
             </h1>
-            <p className="text-sm text-zinc-500">
+            <p className="text-xs md:text-sm text-zinc-500 hidden sm:block">
               Converse com a IA para refinar seu design
             </p>
           </div>
           <button
             onClick={handleNewDesign}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700 transition-colors flex items-center gap-2"
+            className="px-3 md:px-4 py-2 rounded-xl text-sm font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700 transition-colors flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Novo Design
+            <span className="hidden sm:inline">Novo Design</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         </div>
 
-        {/* Split view */}
-        <div className="flex-1 flex min-h-0">
-          {/* Left: Chat */}
-          <div className="w-1/2 border-r border-zinc-800 p-4 flex flex-col min-h-0">
+        {/* Mobile tab switcher */}
+        <div className="md:hidden px-4 py-2 border-b border-zinc-800 shrink-0">
+          <div className="flex bg-zinc-800/60 rounded-lg p-0.5">
+            <button
+              onClick={() => setMobileTab("chat")}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                mobileTab === "chat"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat
+            </button>
+            <button
+              onClick={() => setMobileTab("preview")}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                mobileTab === "preview"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Preview
+            </button>
+          </div>
+        </div>
+
+        {/* Split view (desktop) / Tab view (mobile) */}
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
+          {/* Chat */}
+          <div className={`md:w-1/2 md:border-r border-zinc-800 p-4 flex flex-col min-h-0 ${
+            mobileTab === "chat" ? "flex-1" : "hidden md:flex"
+          }`}>
             <DesignerChat peca={peca} onPecaUpdate={updatePeca} />
           </div>
 
-          {/* Right: Preview */}
-          <div className="w-1/2 bg-zinc-950 overflow-hidden">
+          {/* Preview */}
+          <div className={`md:w-1/2 bg-zinc-950 overflow-hidden ${
+            mobileTab === "preview" ? "flex-1" : "hidden md:block"
+          }`}>
             <DesignerPreview peca={peca} />
           </div>
         </div>
@@ -115,15 +156,15 @@ export default function DesignerPage() {
   }
 
   return (
-    <div className="px-6 py-12 lg:px-8">
+    <div className="px-4 md:px-6 py-8 md:py-12 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-3">
+        <div className="text-center mb-8 md:mb-12">
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">
             <span className="gradient-text">Designer de Moda</span>
           </h1>
-          <p className="text-zinc-400 max-w-lg mx-auto">
+          <p className="text-zinc-400 max-w-lg mx-auto text-sm md:text-base">
             Crie conceitos visuais detalhados de roupas com detalhes técnicos e
-            prompts para geração de imagem com IA.
+            sketches únicos gerados por IA.
           </p>
         </div>
 

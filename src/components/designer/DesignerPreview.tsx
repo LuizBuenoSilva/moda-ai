@@ -1,20 +1,27 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { PecaDesignGerada } from "@/types/designer";
 import PecaSketch, { PecaSketchHandle } from "./PecaSketch";
 
 interface DesignerPreviewProps {
   peca: PecaDesignGerada;
+  onSvgGenerated?: (svg: string) => void;
 }
 
-export default function DesignerPreview({ peca }: DesignerPreviewProps) {
+type PreviewTab = "sketch" | "ia";
+
+export default function DesignerPreview({ peca, onSvgGenerated }: DesignerPreviewProps) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [activeTab, setActiveTab] = useState<PreviewTab>("sketch");
+  const [svgContent, setSvgContent] = useState<string | null>(peca.svgSketch || null);
+  const [generatingSvg, setGeneratingSvg] = useState(false);
+  const [svgError, setSvgError] = useState<string | null>(null);
   const sketchRef = useRef<PecaSketchHandle>(null);
 
   function handleCopyPrompt() {
@@ -24,15 +31,65 @@ export default function DesignerPreview({ peca }: DesignerPreviewProps) {
   }
 
   function handleDownloadImage() {
-    const dataUrl = sketchRef.current?.exportImage();
-    if (!dataUrl) return;
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `${peca.nome.replace(/\s+/g, "_")}_sketch.png`;
-    a.click();
+    if (activeTab === "ia" && svgContent) {
+      // Download SVG as PNG via canvas rasterization
+      const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 1100;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#09090b";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const a = document.createElement("a");
+          a.href = canvas.toDataURL("image/png");
+          a.download = `${peca.nome.replace(/\s+/g, "_")}_ia_sketch.png`;
+          a.click();
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    } else {
+      const dataUrl = sketchRef.current?.exportImage();
+      if (!dataUrl) return;
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${peca.nome.replace(/\s+/g, "_")}_sketch.png`;
+      a.click();
+    }
     setDownloaded(true);
     setTimeout(() => setDownloaded(false), 2000);
   }
+
+  const handleGenerateSvg = useCallback(async () => {
+    setGeneratingSvg(true);
+    setSvgError(null);
+    try {
+      const res = await fetch("/api/gerar-sketch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(peca),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(data.error || "Erro ao gerar sketch");
+      }
+
+      const data = await res.json();
+      setSvgContent(data.svg);
+      setActiveTab("ia");
+      onSvgGenerated?.(data.svg);
+    } catch (err) {
+      setSvgError(err instanceof Error ? err.message : "Erro ao gerar sketch");
+    } finally {
+      setGeneratingSvg(false);
+    }
+  }, [peca, onSvgGenerated]);
 
   async function handleSave() {
     setSaving(true);
@@ -41,7 +98,7 @@ export default function DesignerPreview({ peca }: DesignerPreviewProps) {
       const res = await fetch("/api/gerar-peca/salvar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(peca),
+        body: JSON.stringify({ ...peca, svgSketch: svgContent }),
       });
       if (res.ok) {
         setSaved(true);
@@ -58,9 +115,92 @@ export default function DesignerPreview({ peca }: DesignerPreviewProps) {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {/* Sketch with drawing tools */}
+      {/* Tab toggle */}
+      <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+        <div className="flex bg-zinc-800/60 rounded-lg p-0.5 text-xs">
+          <button
+            onClick={() => setActiveTab("sketch")}
+            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+              activeTab === "sketch"
+                ? "bg-purple-600 text-white shadow"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            Sketch
+          </button>
+          <button
+            onClick={() => setActiveTab("ia")}
+            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+              activeTab === "ia"
+                ? "bg-purple-600 text-white shadow"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            IA Sketch
+          </button>
+        </div>
+
+        {activeTab === "ia" && (
+          <button
+            onClick={handleGenerateSvg}
+            disabled={generatingSvg}
+            className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 border border-purple-500/30 transition-colors disabled:opacity-50"
+          >
+            {generatingSvg ? "Gerando..." : svgContent ? "Regenerar" : "Gerar"}
+          </button>
+        )}
+      </div>
+
+      {/* Preview area */}
       <div className="p-4">
-        <PecaSketch ref={sketchRef} peca={peca} editable />
+        {activeTab === "sketch" ? (
+          <PecaSketch ref={sketchRef} peca={peca} editable />
+        ) : (
+          <div className="relative">
+            {svgContent ? (
+              <div
+                className="w-full rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 flex items-center justify-center min-h-[300px]"
+                dangerouslySetInnerHTML={{ __html: svgContent }}
+              />
+            ) : generatingSvg ? (
+              <div className="w-full rounded-xl bg-zinc-900 border border-zinc-800 flex flex-col items-center justify-center min-h-[300px] gap-4">
+                <div className="w-14 h-14 rounded-full gradient-bg pulse-glow flex items-center justify-center">
+                  <svg className="w-7 h-7 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+                <p className="text-zinc-400 text-sm animate-pulse">
+                  Desenhando sketch único com IA...
+                </p>
+              </div>
+            ) : (
+              <div className="w-full rounded-xl bg-zinc-900 border border-zinc-800 border-dashed flex flex-col items-center justify-center min-h-[300px] gap-3">
+                <svg className="w-12 h-12 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+                </svg>
+                <p className="text-zinc-500 text-sm text-center px-4">
+                  Clique em &quot;Gerar&quot; para criar um sketch único com IA
+                </p>
+                <button
+                  onClick={handleGenerateSvg}
+                  disabled={generatingSvg}
+                  className="px-4 py-2 rounded-xl text-sm font-medium gradient-bg text-white hover:opacity-90 transition-opacity flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                  </svg>
+                  Gerar Sketch com IA
+                </button>
+              </div>
+            )}
+            {svgError && (
+              <p className="mt-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-center">
+                {svgError}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Name + colors */}
