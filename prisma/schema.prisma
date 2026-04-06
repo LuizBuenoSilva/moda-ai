@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Pasta {
+  id        String   @id @default(cuid())
+  nome      String
+  tipo      String   // "looks" ou "designs"
+  cor       String   @default("#a855f7")
+  createdAt DateTime @default(now())
+  looks     Look[]
+  designs   PecaDesign[]
+}
+
+model Look {
+  id            String   @id @default(cuid())
+  nome          String
+  descricao     String
+  estilo        String
+  ocasiao       String
+  genero        String?
+  precoEstimado Float
+  orcamento     Float
+  explicacao    String
+  cores         String   // JSON array de hex colors
+  outfitJson    String   // JSON completo para avatar 3D
+  pastaId       String?
+  pasta         Pasta?   @relation(fields: [pastaId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  pecas         Peca[]
+}
+
+model Peca {
+  id        String  @id @default(cuid())
+  lookId    String
+  look      Look    @relation(fields: [lookId], references: [id], onDelete: Cascade)
+  categoria String  // "top", "bottom", "shoes", "accessory"
+  nome      String
+  descricao String
+  cor       String
+  preco     Float
+  tecido    String?
+  corte     String?
+  detalhes  String?
+  lojas     String?  // JSON array de nomes de lojas
+}
+
+model PecaDesign {
+  id               String   @id @default(cuid())
+  nome             String
+  tipo             String
+  estilo           String
+  descricao        String
+  tecido           String
+  corte            String
+  textura          String
+  elementosVisuais String
+  promptImagem     String
+  sugestaoUso      String
+  cores            String
+  inspiracao       String?
+  pastaId          String?
+  pasta            Pasta?   @relation(fields: [pastaId], references: [id])
+  createdAt        DateTime @default(now())
+}
