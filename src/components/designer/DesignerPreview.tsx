@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { PecaDesignGerada } from "@/types/designer";
 import PecaSketch, { PecaSketchHandle } from "./PecaSketch";
+import { gerarSketchFallback } from "@/lib/sketch-fallback";
 
 interface DesignerPreviewProps {
   peca: PecaDesignGerada;
@@ -120,7 +121,12 @@ const DesignerPreview = forwardRef<DesignerPreviewHandle, DesignerPreviewProps>(
       setSvgContent(svg);
       onSvgGenerated?.(svg);
     } catch (err) {
-      setSvgError(err instanceof Error ? err.message : "Erro ao gerar sketch");
+      console.warn("Erro na API de sketch, usando fallback local:", err);
+      // Use client-side fallback when API fails
+      const fallbackSvg = gerarSketchFallback(peca);
+      setSvgContent(fallbackSvg);
+      onSvgGenerated?.(fallbackSvg);
+      setSvgError(null);
     } finally {
       setGeneratingSvg(false);
     }

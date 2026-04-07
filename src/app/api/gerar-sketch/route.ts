@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { PecaDesignGerada } from "@/types/designer";
+import { gerarSketchFallback } from "@/lib/sketch-fallback";
 
 export const maxDuration = 60;
 
@@ -12,9 +13,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Dados da peça inválidos" }, { status: 400 });
     }
 
-    const anthropic = new Anthropic();
+    // Check if API key is available
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.warn("ANTHROPIC_API_KEY não configurada, usando fallback SVG");
+      const svg = gerarSketchFallback(peca);
+      return new Response(svg, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
+          "X-Sketch-Source": "fallback",
+        },
+      });
+    }
 
-    const prompt = `Você é um ilustrador de moda profissional. Crie um SVG detalhado de um fashion sketch (ilustração de moda) para a seguinte peça:
+    try {
+      const anthropic = new Anthropic();
+
+      const prompt = `Você é um ilustrador de moda profissional. Crie um SVG detalhado de um fashion sketch (ilustração de moda) para a seguinte peça:
 
 PEÇA:
 - Tipo: ${peca.tipo}
@@ -48,40 +63,57 @@ ESTILO DO DESENHO:
 
 IMPORTANTE: Responda APENAS com o código SVG puro. Sem markdown, sem backticks, sem explicação. Apenas o SVG começando com <svg e terminando com </svg>.`;
 
-    const encoder = new TextEncoder();
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
+      const encoder = new TextEncoder();
+      const { readable, writable } = new TransformStream();
+      const writer = writable.getWriter();
 
-    // Start streaming in the background - don't await
-    const streamPromise = (async () => {
-      try {
-        const stream = anthropic.messages.stream({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 8192,
-          messages: [{ role: "user", content: prompt }],
-        });
+      // Start streaming in the background - don't await
+      const streamPromise = (async () => {
+        try {
+          const stream = anthropic.messages.stream({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 8192,
+            messages: [{ role: "user", content: prompt }],
+          });
 
-        for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            await writer.write(encoder.encode(event.delta.text));
+          for await (const event of stream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              await writer.write(encoder.encode(event.delta.text));
+            }
           }
+          await writer.close();
+        } catch (err) {
+          console.error("Erro no stream do sketch, enviando fallback:", err);
+          // Stream the fallback SVG instead
+          const fallbackSvg = gerarSketchFallback(peca);
+          try {
+            await writer.write(encoder.encode(fallbackSvg));
+            await writer.close();
+          } catch { /* ignore */ }
         }
-        await writer.close();
-      } catch (err) {
-        console.error("Erro no stream do sketch:", err);
-        try { await writer.close(); } catch { /* ignore */ }
-      }
-    })();
+      })();
 
-    // Don't block - let the stream flow
-    void streamPromise;
+      // Don't block - let the stream flow
+      void streamPromise;
 
-    return new Response(readable, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    } catch (aiError) {
+      // AI initialization failed entirely - return fallback immediately
+      console.error("Erro ao inicializar IA, usando fallback:", aiError);
+      const svg = gerarSketchFallback(peca);
+      return new Response(svg, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
+          "X-Sketch-Source": "fallback",
+        },
+      });
+    }
   } catch (error) {
     console.error("Erro ao gerar sketch:", error);
     return NextResponse.json(
