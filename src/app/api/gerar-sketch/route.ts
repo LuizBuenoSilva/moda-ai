@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { PecaDesignGerada } from "@/types/designer";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const peca: PecaDesignGerada = await request.json();
@@ -46,18 +48,21 @@ ESTILO DO DESENHO:
 
 IMPORTANTE: Responda APENAS com o código SVG puro. Sem markdown, sem backticks, sem explicação. Apenas o SVG começando com <svg e terminando com </svg>.`;
 
-    const message = await anthropic.messages.create({
+    // Use streaming to avoid Vercel timeout on hobby plan
+    const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      return NextResponse.json({ error: "Resposta inesperada da IA" }, { status: 500 });
+    let svg = "";
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+        svg += event.delta.text;
+      }
     }
 
-    let svg = content.text.trim();
+    svg = svg.trim();
 
     // Clean up any markdown wrapping if present
     if (svg.startsWith("```")) {

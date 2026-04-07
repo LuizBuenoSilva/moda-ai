@@ -142,7 +142,7 @@ export default function Home() {
       <footer className="px-6 py-8 border-t border-zinc-800">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
           <span className="text-sm text-zinc-500">
-            Yuzo &copy; {new Date().getFullYear()} - Powered by Claude AI
+            Yuzo &copy; {new Date().getFullYear()} - Powered by Luiz Silva
           </span>
           <span className="text-sm text-zinc-600">
             Feito com Next.js + Three.js

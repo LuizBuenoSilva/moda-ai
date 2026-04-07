@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { OutfitJson } from "@/types/look";
 import { outfitToParams, Outfit3DParams } from "@/lib/outfit-to-3d";
+import { AvatarAppearance } from "@/components/avatar/AvatarModel";
 
 const AvatarCanvas = dynamic(
   () => import("@/components/avatar/AvatarCanvas"),
@@ -41,7 +42,29 @@ function AvatarContent() {
   const [loading, setLoading] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
   const [canvasKey, setCanvasKey] = useState(0);
+  const [appearance, setAppearance] = useState<AvatarAppearance>({});
   const lastTimestamp = useRef<string | null>(null);
+
+  // Load avatar profile for 3D customization
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/avatar-profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) {
+            setAppearance({
+              skinTone: data.profile.skinTone || undefined,
+              hairColor: data.profile.hairColor || undefined,
+              hairStyle: data.profile.hairStyle || undefined,
+              bodyType: data.profile.bodyType || undefined,
+              height: data.profile.height || undefined,
+            });
+          }
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const applyOutfit = useCallback((outfit: OutfitJson, name?: string) => {
     setOutfitParams(outfitToParams(outfit));
@@ -146,7 +169,7 @@ function AvatarContent() {
             </div>
           </div>
         ) : (
-          <AvatarCanvas key={canvasKey} outfitParams={outfitParams} autoRotate={autoRotate} />
+          <AvatarCanvas key={canvasKey} outfitParams={outfitParams} autoRotate={autoRotate} appearance={appearance} />
         )}
       </div>
 

@@ -34,3 +34,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Erro ao salvar look" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  const { userId, unauthorized } = await getRequiredUser();
+  if (!userId) return unauthorized!;
+
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "ID obrigatório" }, { status: 400 });
+  }
+
+  try {
+    const look = await prisma.homeLook.findUnique({ where: { id } });
+    if (!look || look.userId !== userId) {
+      return NextResponse.json({ error: "Look não encontrado" }, { status: 404 });
+    }
+
+    await prisma.homeLook.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Erro ao excluir look:", error);
+    return NextResponse.json({ error: "Erro ao excluir look" }, { status: 500 });
+  }
+}

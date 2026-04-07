@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { PecaDesignGerada } from "@/types/designer";
 import PecaForm from "@/components/designer/PecaForm";
 import DesignerChat from "@/components/designer/DesignerChat";
-import DesignerPreview from "@/components/designer/DesignerPreview";
+import DesignerPreview, { DesignerPreviewHandle } from "@/components/designer/DesignerPreview";
 
 const STORAGE_KEY = "designer_peca";
 
@@ -23,6 +23,7 @@ export default function DesignerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
+  const previewRef = useRef<DesignerPreviewHandle>(null);
 
   useEffect(() => {
     const cached = loadCachedPeca();
@@ -38,6 +39,14 @@ export default function DesignerPage() {
         sessionStorage.removeItem(STORAGE_KEY);
       }
     } catch { /* ignore */ }
+  }, []);
+
+  const handleSketchRegenerate = useCallback(() => {
+    previewRef.current?.generateSvg();
+  }, []);
+
+  const handleSwitchToPreview = useCallback(() => {
+    setMobileTab("preview");
   }, []);
 
   async function handleGenerate(formData: {
@@ -141,14 +150,19 @@ export default function DesignerPage() {
           <div className={`md:w-1/2 md:border-r border-zinc-800 p-4 flex flex-col min-h-0 ${
             mobileTab === "chat" ? "flex-1" : "hidden md:flex"
           }`}>
-            <DesignerChat peca={peca} onPecaUpdate={updatePeca} />
+            <DesignerChat
+              peca={peca}
+              onPecaUpdate={updatePeca}
+              onSketchRegenerate={handleSketchRegenerate}
+              onSwitchToPreview={handleSwitchToPreview}
+            />
           </div>
 
           {/* Preview */}
           <div className={`md:w-1/2 bg-zinc-950 overflow-hidden ${
             mobileTab === "preview" ? "flex-1" : "hidden md:block"
           }`}>
-            <DesignerPreview peca={peca} />
+            <DesignerPreview ref={previewRef} peca={peca} />
           </div>
         </div>
       </div>

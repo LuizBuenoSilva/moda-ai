@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { PecaDesignGerada } from "@/types/designer";
 import PecaSketch, { PecaSketchHandle } from "./PecaSketch";
 
@@ -9,16 +9,19 @@ interface DesignerPreviewProps {
   onSvgGenerated?: (svg: string) => void;
 }
 
-type PreviewTab = "sketch" | "ia";
+export interface DesignerPreviewHandle {
+  generateSvg: () => void;
+}
 
-export default function DesignerPreview({ peca, onSvgGenerated }: DesignerPreviewProps) {
+const DesignerPreview = forwardRef<DesignerPreviewHandle, DesignerPreviewProps>(
+  function DesignerPreview({ peca, onSvgGenerated }, ref) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<PreviewTab>("sketch");
+  const [activeTab, setActiveTab] = useState<"sketch" | "ia">("sketch");
   const [svgContent, setSvgContent] = useState<string | null>(peca.svgSketch || null);
   const [generatingSvg, setGeneratingSvg] = useState(false);
   const [svgError, setSvgError] = useState<string | null>(null);
@@ -32,7 +35,6 @@ export default function DesignerPreview({ peca, onSvgGenerated }: DesignerPrevie
 
   function handleDownloadImage() {
     if (activeTab === "ia" && svgContent) {
-      // Download SVG as PNG via canvas rasterization
       const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
       const url = URL.createObjectURL(svgBlob);
       const img = new Image();
@@ -66,8 +68,10 @@ export default function DesignerPreview({ peca, onSvgGenerated }: DesignerPrevie
   }
 
   const handleGenerateSvg = useCallback(async () => {
+    if (generatingSvg) return;
     setGeneratingSvg(true);
     setSvgError(null);
+    setActiveTab("ia");
     try {
       const res = await fetch("/api/gerar-sketch", {
         method: "POST",
@@ -82,14 +86,17 @@ export default function DesignerPreview({ peca, onSvgGenerated }: DesignerPrevie
 
       const data = await res.json();
       setSvgContent(data.svg);
-      setActiveTab("ia");
       onSvgGenerated?.(data.svg);
     } catch (err) {
       setSvgError(err instanceof Error ? err.message : "Erro ao gerar sketch");
     } finally {
       setGeneratingSvg(false);
     }
-  }, [peca, onSvgGenerated]);
+  }, [peca, onSvgGenerated, generatingSvg]);
+
+  useImperativeHandle(ref, () => ({
+    generateSvg: handleGenerateSvg,
+  }), [handleGenerateSvg]);
 
   async function handleSave() {
     setSaving(true);
@@ -331,4 +338,6 @@ export default function DesignerPreview({ peca, onSvgGenerated }: DesignerPrevie
       </div>
     </div>
   );
-}
+});
+
+export default DesignerPreview;

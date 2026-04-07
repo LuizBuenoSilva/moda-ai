@@ -2,16 +2,17 @@
 
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
-import AvatarModel from "./AvatarModel";
+import AvatarModel, { AvatarAppearance } from "./AvatarModel";
 import OutfitRenderer from "./OutfitRenderer";
 import { Outfit3DParams } from "@/lib/outfit-to-3d";
 
 interface AvatarCanvasProps {
   outfitParams: Outfit3DParams | null;
   autoRotate?: boolean;
+  appearance?: AvatarAppearance;
 }
 
-export default function AvatarCanvas({ outfitParams, autoRotate = true }: AvatarCanvasProps) {
+export default function AvatarCanvas({ outfitParams, autoRotate = true, appearance }: AvatarCanvasProps) {
   return (
     <Canvas
       camera={{ position: [0, 1.2, 3.5], fov: 40 }}
@@ -44,7 +45,7 @@ export default function AvatarCanvas({ outfitParams, autoRotate = true }: Avatar
 
       {/* Avatar */}
       <group position={[0, 0, 0]}>
-        <AvatarModel />
+        <AvatarModel appearance={appearance} />
         {outfitParams && <OutfitRenderer params={outfitParams} />}
       </group>
 

@@ -45,7 +45,6 @@ function gerarPecaOffline(input: PecaDesignInput): PecaDesignGerada {
     caramelo: "#8d6e63", grafite: "#455a64", off: "#fafafa", "off-white": "#fafafa",
   };
 
-  // Split by comma, "e", "com", or detect color names directly
   const coresRaw = input.cores
     ? input.cores.split(/[,]|\s+e\s+|\s+com\s+/i).map((c) => c.trim()).filter(Boolean)
     : [];
@@ -54,9 +53,7 @@ function gerarPecaOffline(input: PecaDesignInput): PecaDesignGerada {
     ? coresRaw.map((c) => {
         if (c.startsWith("#")) return c;
         const lower = c.toLowerCase().trim();
-        // Try exact match first
         if (nomesCores[lower]) return nomesCores[lower];
-        // Try partial match (e.g. "azul claro" in "azul claro")
         for (const [nome, hex] of Object.entries(nomesCores)) {
           if (lower.includes(nome) || nome.includes(lower)) return hex;
         }
@@ -147,6 +144,12 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface RefinamentoResult {
+  peca: PecaDesignGerada;
+  resposta: string;
+  mudancas: string[];
+}
+
 const CORES_MAP: Record<string, string> = {
   preto: "#000000", branco: "#ffffff", vermelho: "#e53935", azul: "#1565c0",
   verde: "#2e7d32", amarelo: "#fdd835", rosa: "#f06292", roxo: "#7b1fa2",
@@ -198,20 +201,90 @@ const ELEMENTOS_MAP: Record<string, string> = {
 
 const TIPOS_VALIDOS = ["camiseta", "camisa", "jaqueta", "moletom", "blazer", "vestido", "calca", "shorts", "saia", "tenis", "bota", "bolsa", "acessorio", "regata"];
 
+const ABERTURAS = [
+  "Adorei a direção!",
+  "Ótima escolha!",
+  "Transformação feita!",
+  "Ficou incrível!",
+  "Visual renovado!",
+  "Mudança aplicada com estilo!",
+  "Excelente pedido!",
+];
+
+const SUGESTOES_PROXIMO = [
+  "Que tal gerar o sketch para visualizar como ficou?",
+  "Quer experimentar outra combinação de cores?",
+  "Posso sugerir um tecido diferente para dar outro caimento.",
+  "Quer adicionar algum detalhe especial, como bordados ou patches?",
+  "Que tal mudar o corte para algo mais diferenciado?",
+  "Posso transformar o estilo completamente se quiser algo mais ousado!",
+  "Quer que eu sugira elementos visuais que combinem com essa mudança?",
+];
+
+function randomPick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function buildOfflineResponse(mudancasDesc: string[], mudancasFields: string[], peca: PecaDesignGerada): string {
+  const parts: string[] = [];
+
+  parts.push(randomPick(ABERTURAS));
+
+  for (let i = 0; i < mudancasFields.length; i++) {
+    const field = mudancasFields[i];
+    const desc = mudancasDesc[i] || "";
+    switch (field) {
+      case "cores":
+        parts.push(`A nova paleta de cores (${peca.cores.join(", ")}) traz uma energia completamente diferente para a peça — o contraste entre os tons cria um visual marcante.`);
+        break;
+      case "tecido":
+        parts.push(`O **${peca.tecido.toLowerCase()}** vai dar um caimento e toque únicos, transformando a sensação da peça por completo.`);
+        break;
+      case "corte":
+        parts.push(`Com o corte **${peca.corte}**, a silhueta ganha uma proporção mais interessante e contemporânea.`);
+        break;
+      case "estilo":
+        parts.push(`Mudando para o estilo **${peca.estilo}**, o conceito inteiro se reinventa — novos detalhes, texturas e atitude.`);
+        break;
+      case "elementosVisuais":
+        parts.push(`Os novos elementos visuais (${peca.elementosVisuais}) adicionam camadas de interesse e personalidade ao design.`);
+        break;
+      case "tipo":
+        parts.push(`Transformei a peça em uma **${peca.tipo}** — ${desc.toLowerCase()}.`);
+        break;
+      case "inspiracao":
+        parts.push(`A inspiração em **${peca.inspiracao}** dá uma narrativa especial e referências visuais únicas ao design.`);
+        break;
+      default:
+        if (desc) parts.push(desc);
+    }
+  }
+
+  if (mudancasFields.length === 0) {
+    parts.push("Apliquei ajustes criativos ao design para torná-lo mais interessante e único.");
+  }
+
+  parts.push(randomPick(SUGESTOES_PROXIMO));
+
+  return parts.join("\n\n");
+}
+
 function refinarPecaOffline(
   pecaAtual: PecaDesignGerada,
   instrucao: string
-): { peca: PecaDesignGerada; resposta: string } {
+): RefinamentoResult {
   const lower = instrucao.toLowerCase();
   const peca: PecaDesignGerada = JSON.parse(JSON.stringify(pecaAtual));
-  const mudancas: string[] = [];
+  const mudancasDesc: string[] = [];
+  const mudancasFields: string[] = [];
 
   // --- Type change ---
   for (const t of TIPOS_VALIDOS) {
     if (lower.includes(t) && t !== peca.tipo.toLowerCase()) {
       peca.tipo = t.charAt(0).toUpperCase() + t.slice(1);
       peca.tecido = TECIDOS[t] || peca.tecido;
-      mudancas.push(`Tipo alterado para ${peca.tipo}`);
+      mudancasDesc.push(`Tipo alterado para ${peca.tipo}`);
+      mudancasFields.push("tipo");
       break;
     }
   }
@@ -224,7 +297,8 @@ function refinarPecaOffline(
       peca.corte = CORTES[est] || peca.corte;
       peca.textura = TEXTURAS_MAP[est] || peca.textura;
       peca.elementosVisuais = ELEMENTOS_MAP[est] || peca.elementosVisuais;
-      mudancas.push(`Estilo alterado para ${est}`);
+      mudancasDesc.push(`Estilo alterado para ${est}`);
+      mudancasFields.push("estilo");
       break;
     }
   }
@@ -239,7 +313,8 @@ function refinarPecaOffline(
   if (hexMatches) coresEncontradas.push(...hexMatches);
   if (coresEncontradas.length > 0) {
     peca.cores = [...new Set(coresEncontradas)].slice(0, 5);
-    mudancas.push(`Cores: ${peca.cores.join(", ")}`);
+    mudancasDesc.push(`Cores: ${peca.cores.join(", ")}`);
+    mudancasFields.push("cores");
   }
 
   // --- Fabric change ---
@@ -247,7 +322,8 @@ function refinarPecaOffline(
   for (const nome of sortedFabrics) {
     if (lower.includes(nome)) {
       peca.tecido = TECIDOS_MAP[nome];
-      mudancas.push(`Tecido: ${peca.tecido}`);
+      mudancasDesc.push(`Tecido: ${peca.tecido}`);
+      mudancasFields.push("tecido");
       break;
     }
   }
@@ -264,7 +340,8 @@ function refinarPecaOffline(
   for (const [kw, corte] of Object.entries(corteKeywords)) {
     if (lower.includes(kw)) {
       peca.corte = corte;
-      mudancas.push(`Corte: ${corte}`);
+      mudancasDesc.push(`Corte: ${corte}`);
+      mudancasFields.push("corte");
       break;
     }
   }
@@ -280,6 +357,7 @@ function refinarPecaOffline(
     "patch": "patches aplicados costurados", patches: "patches temáticos variados",
     capuz: "capuz ajustável com cordão", gola: "gola alta estruturada",
     "gola v": "decote em V profundo", manga: "mangas diferenciadas",
+    "manga longa": "mangas longas com punho", "manga curta": "mangas curtas clássicas",
     franjas: "franjas decorativas nas extremidades", tachas: "tachas metálicas decorativas",
     corrente: "detalhe de corrente metálica", fita: "fitas decorativas aplicadas",
     recorte: "recortes geométricos vazados", transparência: "painéis semi-transparentes",
@@ -299,32 +377,40 @@ function refinarPecaOffline(
   }
   if (detalhesAdded.length > 0) {
     peca.elementosVisuais = detalhesAdded.join(", ");
-    mudancas.push(`Elementos: ${peca.elementosVisuais}`);
+    mudancasDesc.push(`Elementos: ${peca.elementosVisuais}`);
+    if (!mudancasFields.includes("elementosVisuais")) {
+      mudancasFields.push("elementosVisuais");
+    }
   }
 
   // --- Mood-based changes ---
   if (lower.includes("ousado") || lower.includes("bold") || lower.includes("chamativo")) {
     peca.elementosVisuais = (peca.elementosVisuais || "") + ", contrastes ousados, detalhes bold e chamativos";
     peca.textura = "Textura marcante com acabamentos contrastantes e brilho";
-    mudancas.push("Design mais ousado e chamativo");
+    mudancasDesc.push("Design mais ousado e chamativo");
+    if (!mudancasFields.includes("elementosVisuais")) mudancasFields.push("elementosVisuais");
   }
   if (lower.includes("discreto") || lower.includes("simples") || lower.includes("clean") || lower.includes("limpo")) {
     peca.elementosVisuais = "Linhas limpas, sem estampa, acabamento tom sobre tom";
     peca.textura = "Superfície uniforme, toque suave e discreto";
-    mudancas.push("Design simplificado e discreto");
+    mudancasDesc.push("Design simplificado e discreto");
+    if (!mudancasFields.includes("elementosVisuais")) mudancasFields.push("elementosVisuais");
   }
   if (lower.includes("elegante") || lower.includes("luxo") || lower.includes("sofisticado")) {
     peca.elementosVisuais = "Acabamento premium, detalhes de aviamento fino, costuras invisíveis";
     peca.textura = "Textura refinada com caimento impecável e toque luxuoso";
     peca.tecido = peca.tecido.includes("premium") ? peca.tecido : peca.tecido + " com acabamento premium";
-    mudancas.push("Design mais elegante e sofisticado");
+    mudancasDesc.push("Design mais elegante e sofisticado");
+    if (!mudancasFields.includes("elementosVisuais")) mudancasFields.push("elementosVisuais");
+    if (!mudancasFields.includes("tecido")) mudancasFields.push("tecido");
   }
 
   // --- Inspiration ---
   const inspMatch = lower.match(/inspira[çc][aã]o\s+(?:em|de|no|na)\s+(.+?)(?:\.|,|$)/);
   if (inspMatch) {
     peca.inspiracao = inspMatch[1].trim();
-    mudancas.push(`Inspiração: ${peca.inspiracao}`);
+    mudancasDesc.push(`Inspiração: ${peca.inspiracao}`);
+    mudancasFields.push("inspiracao");
   }
   const temaKeywords: Record<string, string> = {
     japonês: "cultura japonesa", japão: "cultura japonesa", "anos 90": "moda dos anos 90",
@@ -338,13 +424,14 @@ function refinarPecaOffline(
   for (const [kw, insp] of Object.entries(temaKeywords)) {
     if (lower.includes(kw) && !peca.inspiracao?.includes(insp)) {
       peca.inspiracao = insp;
-      mudancas.push(`Inspiração: ${insp}`);
+      mudancasDesc.push(`Inspiração: ${insp}`);
+      if (!mudancasFields.includes("inspiracao")) mudancasFields.push("inspiracao");
       break;
     }
   }
 
   // If nothing was detected, apply a generic creative update
-  if (mudancas.length === 0) {
+  if (mudancasDesc.length === 0) {
     const creativity = [
       { ev: "Costuras contrastantes e detalhes de acabamento diferenciado", tex: "Textura mista com elementos táteis" },
       { ev: "Apliques artesanais com materiais reciclados", tex: "Textura orgânica com fibras naturais" },
@@ -354,7 +441,8 @@ function refinarPecaOffline(
     const pick = creativity[Math.floor(Math.random() * creativity.length)];
     peca.elementosVisuais = pick.ev;
     peca.textura = pick.tex;
-    mudancas.push("Apliquei ajustes criativos ao design conforme solicitado");
+    mudancasDesc.push("Apliquei ajustes criativos ao design");
+    mudancasFields.push("elementosVisuais");
   }
 
   // Always update derived fields
@@ -363,18 +451,22 @@ function refinarPecaOffline(
   peca.promptImagem = `A ${peca.corte} ${peca.estilo} ${peca.tipo}, colors ${peca.cores.join(" and ")}, ${peca.inspiracao ? `inspired by ${peca.inspiracao},` : ""} ${peca.elementosVisuais}, high detail, fashion design flat lay, clean white background, studio lighting, professional fashion photography, 4k, photorealistic`;
   peca.sugestaoUso = `Ideal para ocasiões que pedem estilo ${peca.estilo}. Combina com peças neutras para equilibrar ou peças do mesmo estilo para um look marcante.`;
 
-  return { peca, resposta: mudancas.join(". ") + "." };
+  return {
+    peca,
+    resposta: buildOfflineResponse(mudancasDesc, mudancasFields, peca),
+    mudancas: mudancasFields,
+  };
 }
 
 export async function refinarPecaDesign(
   pecaAtual: PecaDesignGerada,
   instrucao: string,
   historico: ChatMessage[] = []
-): Promise<{ peca: PecaDesignGerada; resposta: string }> {
+): Promise<RefinamentoResult> {
   try {
     const anthropic = new Anthropic();
 
-    const systemPrompt = `Você é um designer de moda visionário e extremamente criativo, ajudando a refinar um design de roupa.
+    const systemPrompt = `Você é um designer de moda visionário e extremamente criativo, ajudando a refinar um design de roupa através de um chat interativo e envolvente.
 O design atual é:
 ${JSON.stringify(pecaAtual, null, 2)}
 
@@ -391,11 +483,21 @@ DIRETRIZES CRIATIVAS:
 - O campo elementosVisuais deve ser rico e específico
 - O promptImagem deve descrever TODOS os detalhes visuais em inglês, como se pintasse a peça com palavras
 
+PERSONALIDADE DO CHAT:
+- Seja entusiasta e envolvente nas respostas
+- Explique o **porquê** das escolhas criativas — qual emoção transmite, que referência usa
+- Sugira uma próxima evolução possível ao final da resposta
+- Use **negrito** para destacar elementos-chave (tecido, corte, cores)
+- Escreva 4-6 frases ricas e conversacionais na resposta
+
 IMPORTANTE: Sua resposta deve ser APENAS um JSON válido (sem markdown, sem backticks) com esta estrutura exata:
 {
-  "resposta": "Resumo criativo em português das mudanças, explicando a visão por trás das escolhas (2-3 frases)",
-  "peca": { ...o JSON completo da peça atualizada com TODOS os campos... }
+  "resposta": "Resposta conversacional rica em português (4-6 frases). Explique escolhas criativas, como os elementos se complementam, e sugira uma próxima evolução.",
+  "peca": { ...o JSON completo da peça atualizada com TODOS os campos... },
+  "mudancas": ["campo1", "campo2"]
 }
+
+O campo "mudancas" deve listar os nomes dos campos que foram alterados. Valores possíveis: "cores", "tecido", "corte", "estilo", "elementosVisuais", "tipo", "inspiracao", "textura".
 
 Campos obrigatórios em "peca": nome, tipo, estilo, descricao, tecido, corte, textura, elementosVisuais, promptImagem, sugestaoUso, cores (array de hex), inspiracao.
 Mantenha os campos que não foram alterados. As cores devem ser hex (#xxxxxx).`;
@@ -415,7 +517,11 @@ Mantenha os campos que não foram alterados. As cores devem ser hex (#xxxxxx).`;
     const content = message.content[0];
     if (content.type !== "text") throw new Error("Resposta inesperada");
     const parsed = JSON.parse(content.text);
-    return { peca: parsed.peca, resposta: parsed.resposta };
+    return {
+      peca: parsed.peca,
+      resposta: parsed.resposta,
+      mudancas: parsed.mudancas || [],
+    };
   } catch {
     console.log("API indisponível, usando engine offline para refinar design");
     return refinarPecaOffline(pecaAtual, instrucao);
