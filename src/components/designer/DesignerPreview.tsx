@@ -80,13 +80,45 @@ const DesignerPreview = forwardRef<DesignerPreviewHandle, DesignerPreviewProps>(
       });
 
       if (!res.ok) {
+        // Error responses are still JSON
         const data = await res.json().catch(() => ({ error: "Erro desconhecido" }));
         throw new Error(data.error || "Erro ao gerar sketch");
       }
 
-      const data = await res.json();
-      setSvgContent(data.svg);
-      onSvgGenerated?.(data.svg);
+      // Response is streamed as plain text (SVG)
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Erro ao ler resposta");
+
+      const decoder = new TextDecoder();
+      let svg = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        svg += decoder.decode(value, { stream: true });
+        // Show progressive SVG as it streams in
+        if (svg.includes("</svg>")) {
+          const match = svg.match(/<svg[\s\S]*<\/svg>/);
+          if (match) setSvgContent(match[0]);
+        }
+      }
+
+      svg = svg.trim();
+      // Clean up any markdown wrapping
+      if (svg.startsWith("```")) {
+        svg = svg.replace(/^```(?:svg|xml)?\n?/, "").replace(/\n?```$/, "").trim();
+      }
+      // Validate and extract SVG
+      if (!svg.startsWith("<svg")) {
+        const svgMatch = svg.match(/<svg[\s\S]*<\/svg>/);
+        if (svgMatch) {
+          svg = svgMatch[0];
+        } else {
+          throw new Error("IA não gerou SVG válido");
+        }
+      }
+
+      setSvgContent(svg);
+      onSvgGenerated?.(svg);
     } catch (err) {
       setSvgError(err instanceof Error ? err.message : "Erro ao gerar sketch");
     } finally {

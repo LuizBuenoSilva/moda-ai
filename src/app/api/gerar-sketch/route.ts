@@ -48,39 +48,37 @@ ESTILO DO DESENHO:
 
 IMPORTANTE: Responda APENAS com o código SVG puro. Sem markdown, sem backticks, sem explicação. Apenas o SVG começando com <svg e terminando com </svg>.`;
 
-    // Use streaming to avoid Vercel timeout on hobby plan
+    // Stream the response back to the client to avoid Vercel timeout
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-20250514",
       max_tokens: 8192,
       messages: [{ role: "user", content: prompt }],
     });
 
-    let svg = "";
-    for await (const event of stream) {
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-        svg += event.delta.text;
-      }
-    }
+    const encoder = new TextEncoder();
 
-    svg = svg.trim();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
 
-    // Clean up any markdown wrapping if present
-    if (svg.startsWith("```")) {
-      svg = svg.replace(/^```(?:svg|xml)?\n?/, "").replace(/\n?```$/, "").trim();
-    }
-
-    // Validate it's actually SVG
-    if (!svg.startsWith("<svg")) {
-      // Try to extract SVG from the response
-      const svgMatch = svg.match(/<svg[\s\S]*<\/svg>/);
-      if (svgMatch) {
-        svg = svgMatch[0];
-      } else {
-        return NextResponse.json({ error: "IA não gerou SVG válido" }, { status: 500 });
-      }
-    }
-
-    return NextResponse.json({ svg });
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   } catch (error) {
     console.error("Erro ao gerar sketch:", error);
     return NextResponse.json(
