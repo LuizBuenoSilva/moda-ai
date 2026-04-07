@@ -48,34 +48,37 @@ ESTILO DO DESENHO:
 
 IMPORTANTE: Responda APENAS com o código SVG puro. Sem markdown, sem backticks, sem explicação. Apenas o SVG começando com <svg e terminando com </svg>.`;
 
-    // Stream the response back to the client to avoid Vercel timeout
-    const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 8192,
-      messages: [{ role: "user", content: prompt }],
-    });
-
     const encoder = new TextEncoder();
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
 
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const event of stream) {
-            if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(event.delta.text));
-            }
+    // Start streaming in the background - don't await
+    const streamPromise = (async () => {
+      try {
+        const stream = anthropic.messages.stream({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 8192,
+          messages: [{ role: "user", content: prompt }],
+        });
+
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            await writer.write(encoder.encode(event.delta.text));
           }
-          controller.close();
-        } catch (err) {
-          controller.error(err);
         }
-      },
-    });
+        await writer.close();
+      } catch (err) {
+        console.error("Erro no stream do sketch:", err);
+        try { await writer.close(); } catch { /* ignore */ }
+      }
+    })();
+
+    // Don't block - let the stream flow
+    void streamPromise;
 
     return new Response(readable, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Transfer-Encoding": "chunked",
         "X-Content-Type-Options": "nosniff",
       },
     });
