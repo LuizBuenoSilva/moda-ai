@@ -199,20 +199,26 @@ export async function gerarLooks(input: LookInput): Promise<LookGerado[]> {
 
 DADOS: Estilo: ${input.estilo} | Ocasião: ${input.ocasiao} | Orçamento: R$${input.orcamento}${input.genero ? ` | Gênero: ${input.genero}` : ""}${input.preferencias ? ` | Preferências: ${input.preferencias}` : ""}
 
-REGRAS: Cada look tem top, bottom, shoes, 1+ acessório. Preço total <= R$${input.orcamento}. Cores em hex. Preços reais BR. 3 looks diferentes.
+REGRAS:
+- Cada look: top + bottom + shoes + 1 acessório
+- Preço total <= R$${input.orcamento}. Cores em hex. Preços reais BR. 3 looks diferentes
+- OBRIGATÓRIO: campo "lojas" em CADA peça com 2-3 lojas brasileiras reais (Renner, Zara, C&A, Riachuelo, Hering, Nike, Adidas, Farm, Amaro, Arezzo, Zattini, Netshoes, Decathlon, Shein, Reserva, Levi's, etc.)
 
-Responda APENAS JSON válido (sem markdown):
-[{"nome":"...","descricao":"...","estilo":"${input.estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"..."}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
+Responda APENAS JSON válido (sem markdown, sem texto antes ou depois):
+[{"nome":"...","descricao":"...","estilo":"${input.estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2","Loja3"]}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
     });
 
     const content = message.content[0];
     if (content.type !== "text") throw new Error("Resposta inesperada");
-    return JSON.parse(content.text);
+
+    // Strip any accidental markdown fences before parsing
+    const cleaned = content.text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    return JSON.parse(cleaned);
   } catch {
     // Fallback to offline rule-based engine
     console.log("API indisponível, usando engine offline");
