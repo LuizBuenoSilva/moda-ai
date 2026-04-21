@@ -5,9 +5,38 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  // Shorten cookie names so request headers stay under the 8 KB Vercel limit
+  cookies: {
+    sessionToken: {
+      name: isProduction ? "__Secure-na.st" : "na.st",
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction },
+    },
+    callbackUrl: {
+      name: isProduction ? "__Secure-na.cb" : "na.cb",
+      options: { sameSite: "lax", path: "/", secure: isProduction },
+    },
+    csrfToken: {
+      name: isProduction ? "__Host-na.csrf" : "na.csrf",
+      options: { httpOnly: true, sameSite: "lax", path: "/" },
+    },
+    pkceCodeVerifier: {
+      name: isProduction ? "__Secure-na.pkce" : "na.pkce",
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction, maxAge: 900 },
+    },
+    state: {
+      name: isProduction ? "__Secure-na.state" : "na.state",
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction, maxAge: 900 },
+    },
+    nonce: {
+      name: isProduction ? "__Secure-na.nonce" : "na.nonce",
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction },
+    },
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID ?? "",
