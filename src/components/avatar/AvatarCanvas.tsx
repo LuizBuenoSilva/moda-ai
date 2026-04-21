@@ -15,33 +15,33 @@ interface AvatarCanvasProps {
 export default function AvatarCanvas({ outfitParams, autoRotate = true, appearance }: AvatarCanvasProps) {
   return (
     <Canvas
-      camera={{ position: [0, 1.2, 3.5], fov: 40 }}
-      style={{ background: "#0a0a0f" }}
+      camera={{ position: [0, 1.0, 3.2], fov: 38 }}
+      style={{ background: "#0d0d12" }}
+      shadows
     >
-      {/* Lighting */}
-      <ambientLight intensity={0.35} />
-      {/* Key light – warm front-top */}
-      <directionalLight position={[2, 5, 4]} intensity={1.6} castShadow color="#fff8f0" />
-      {/* Fill light – cool side */}
-      <directionalLight position={[-4, 3, 2]} intensity={0.6} color="#c8d8ff" />
-      {/* Rim / back light */}
-      <directionalLight position={[0, 2, -5]} intensity={0.4} color="#ffffff" />
-      {/* Ground bounce */}
-      <hemisphereLight color="#ffffff" groundColor="#303040" intensity={0.5} />
+      {/* Lighting – three-point studio setup */}
+      <ambientLight intensity={0.28} />
+      {/* Key light – warm, front-left above */}
+      <directionalLight position={[2.5, 4.5, 3.5]} intensity={2.0} castShadow color="#fff5e8" shadow-mapSize={[2048, 2048]} />
+      {/* Fill light – cool, opposite side */}
+      <directionalLight position={[-3.5, 2.5, 1.5]} intensity={0.7} color="#c0d0ff" />
+      {/* Rim light – behind to separate from background */}
+      <directionalLight position={[0.5, 3.0, -4.0]} intensity={0.55} color="#e8f0ff" />
+      {/* Ground bounce – subtle warm */}
+      <hemisphereLight color="#fff8f0" groundColor="#1a1a28" intensity={0.45} />
 
-      {/* Environment for reflections */}
-      <Environment preset="apartment" />
+      {/* Environment for PBR reflections */}
+      <Environment preset="studio" />
 
       {/* Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, 0]} receiveShadow>
-        <circleGeometry args={[2, 64]} />
-        <meshStandardMaterial color="#141419" roughness={0.8} />
+        <circleGeometry args={[2.5, 64]} />
+        <meshStandardMaterial color="#111118" roughness={0.92} metalness={0.08} />
       </mesh>
-
-      {/* Floor ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.11, 0]}>
-        <ringGeometry args={[0.8, 0.82, 64]} />
-        <meshStandardMaterial color="#a855f7" emissive="#a855f7" emissiveIntensity={0.3} />
+      {/* Floor ring glow */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.115, 0]}>
+        <ringGeometry args={[0.72, 0.75, 64]} />
+        <meshStandardMaterial color="#a855f7" emissive="#a855f7" emissiveIntensity={0.5} />
       </mesh>
 
       {/* Avatar */}
