@@ -1,9 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import ProfilePhotoUpload from "@/components/auth/ProfilePhotoUpload";
 
 /** Extract a safe same-origin pathname from the callbackUrl param */
@@ -19,24 +17,25 @@ function safeCallbackUrl(raw: string | null): string {
   }
 }
 
+function getDestination(): string {
+  if (typeof window === "undefined") return "/estilista";
+  return safeCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl"));
+}
+
 export default function EntrarPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const { status } = useSession();
 
-  // Read callbackUrl once, server-side-safe
-  const callbackUrl =
-    typeof window !== "undefined"
-      ? safeCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl"))
-      : "/estilista";
-
-  // If already logged in, go straight to destination
+  // If session becomes authenticated (e.g. page loaded while already logged in),
+  // do a hard redirect so cookies/session are guaranteed to be present.
   useEffect(() => {
-    if (status === "authenticated") router.replace(callbackUrl);
-  }, [status, callbackUrl, router]);
+    if (status === "authenticated") {
+      window.location.replace(getDestination());
+    }
+  }, [status]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,7 +54,6 @@ export default function EntrarPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, email, password, image: profilePhoto }),
         });
-
         if (!registerRes.ok) {
           const data = await registerRes.json();
           throw new Error(data.error || "Não foi possível criar a conta");
@@ -72,11 +70,10 @@ export default function EntrarPage() {
         throw new Error("Email ou senha inválidos");
       }
 
-      // Redirect to main page after login / account creation
-      router.replace(callbackUrl);
+      // Hard navigation so the new session cookie is sent on the next request
+      window.location.replace(getDestination());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
-    } finally {
       setLoading(false);
     }
   }
@@ -92,7 +89,7 @@ export default function EntrarPage() {
         </p>
 
         <button
-          onClick={() => signIn("google", { callbackUrl, redirect: true })}
+          onClick={() => signIn("google", { callbackUrl: getDestination(), redirect: true })}
           className="w-full py-2.5 rounded-xl bg-white text-zinc-900 font-medium hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
