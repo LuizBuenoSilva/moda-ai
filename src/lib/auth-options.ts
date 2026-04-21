@@ -10,31 +10,16 @@ const isProduction = process.env.NODE_ENV === "production";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
-  // Shorten cookie names so request headers stay under the 8 KB Vercel limit
+  // Limit maxAge on temporary OAuth cookies so they don't accumulate
+  // and overflow the 8 KB Vercel request-header limit (494 error).
   cookies: {
-    sessionToken: {
-      name: isProduction ? "__Secure-na.st" : "na.st",
-      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction },
-    },
-    callbackUrl: {
-      name: isProduction ? "__Secure-na.cb" : "na.cb",
-      options: { sameSite: "lax", path: "/", secure: isProduction },
-    },
-    csrfToken: {
-      name: isProduction ? "__Host-na.csrf" : "na.csrf",
-      options: { httpOnly: true, sameSite: "lax", path: "/" },
-    },
     pkceCodeVerifier: {
-      name: isProduction ? "__Secure-na.pkce" : "na.pkce",
+      name: isProduction ? "__Secure-next-auth.pkce.code_verifier" : "next-auth.pkce.code_verifier",
       options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction, maxAge: 900 },
     },
     state: {
-      name: isProduction ? "__Secure-na.state" : "na.state",
+      name: isProduction ? "__Secure-next-auth.state" : "next-auth.state",
       options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction, maxAge: 900 },
-    },
-    nonce: {
-      name: isProduction ? "__Secure-na.nonce" : "na.nonce",
-      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction },
     },
   },
   providers: [
