@@ -1,66 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { LookGerado, PecaGerada } from "@/types/look";
+import { useState } from "react";
+import { LookGerado } from "@/types/look";
 import { getStoreSearchUrl } from "@/lib/store-urls";
-
-// ── Piece thumbnail ──────────────────────────────────────────────────────────
-
-function PieceImage({ peca }: { peca: PecaGerada }) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [errored, setErrored] = useState(false);
-
-  useEffect(() => {
-    if (!peca.imagemQuery) return;
-
-    // Check sessionStorage cache first
-    const cacheKey = `pimg_${peca.imagemQuery}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      setSrc(cached === "null" ? null : cached);
-      setLoaded(true);
-      return;
-    }
-
-    fetch(`/api/fashion-image?q=${encodeURIComponent(peca.imagemQuery)}`)
-      .then((r) => r.json())
-      .then(({ url }: { url: string | null }) => {
-        setSrc(url);
-        sessionStorage.setItem(cacheKey, url ?? "null");
-        setLoaded(true);
-      })
-      .catch(() => {
-        setLoaded(true);
-      });
-  }, [peca.imagemQuery]);
-
-  // Color-based placeholder (always shown while loading or when no image)
-  const placeholder = (
-    <div
-      className="w-14 h-14 rounded-xl shrink-0 flex items-center justify-center border border-white/10"
-      style={{ backgroundColor: peca.cor + "33", borderColor: peca.cor + "55" }}
-    >
-      <div className="w-7 h-7 rounded-full" style={{ backgroundColor: peca.cor }} />
-    </div>
-  );
-
-  if (!loaded || errored || !src) return placeholder;
-
-  return (
-    <div className="w-14 h-14 rounded-xl shrink-0 overflow-hidden border border-zinc-700 relative">
-      <Image
-        src={src}
-        alt={peca.nome}
-        fill
-        sizes="56px"
-        className="object-cover"
-        onError={() => setErrored(true)}
-      />
-    </div>
-  );
-}
 
 // ── Main card ────────────────────────────────────────────────────────────────
 
@@ -141,8 +83,13 @@ export default function LookCard({ look, index }: LookCardProps) {
       <div className="p-6 space-y-4 flex-1">
         {look.pecas.map((peca, i) => (
           <div key={i} className="flex gap-3">
-            {/* Thumbnail */}
-            <PieceImage peca={peca} />
+            {/* Color dot */}
+            <div
+              className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center border border-white/10"
+              style={{ backgroundColor: peca.cor + "33", borderColor: peca.cor + "55" }}
+            >
+              <div className="w-5 h-5 rounded-full" style={{ backgroundColor: peca.cor }} />
+            </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0">

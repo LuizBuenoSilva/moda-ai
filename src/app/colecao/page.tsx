@@ -4,46 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getStoreSearchUrl } from "@/lib/store-urls";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import type { PecaDesignGerada } from "@/types/designer";
 import type { LookGerado } from "@/types/look";
 
 const PecaSketch = dynamic(() => import("@/components/designer/PecaSketch"), { ssr: false });
 const LookCard   = dynamic(() => import("@/components/estilista/LookCard"),   { ssr: false });
-
-// ── Small piece thumbnail (fetches Pexels image) ─────────────────────────────
-function PecaThumb({ nome, tecido, cor }: { nome: string; tecido?: string | null; cor: string }) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    const q = `${tecido ?? ""} ${nome} fashion`.trim().slice(0, 60);
-    const key = `pimg_${q}`;
-    const cached = sessionStorage.getItem(key);
-    if (cached) { setSrc(cached === "null" ? null : cached); setLoaded(true); return; }
-    fetch(`/api/fashion-image?q=${encodeURIComponent(q)}`)
-      .then(r => r.json())
-      .then(({ url }: { url: string | null }) => {
-        setSrc(url); sessionStorage.setItem(key, url ?? "null"); setLoaded(true);
-      })
-      .catch(() => setLoaded(true));
-  }, [nome, tecido]);
-
-  if (!loaded || !src) {
-    return (
-      <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center border border-white/10"
-        style={{ backgroundColor: cor + "33" }}>
-        <div className="w-6 h-6 rounded-full" style={{ backgroundColor: cor }} />
-      </div>
-    );
-  }
-  return (
-    <div className="w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-zinc-700 relative">
-      <Image src={src} alt={nome} fill sizes="48px" className="object-cover"
-        onError={() => setSrc(null)} />
-    </div>
-  );
-}
 
 interface LookSalvo {
   id: string;
@@ -633,7 +598,12 @@ export default function ColecaoPage() {
                               return (
                                 <div key={peca.id} className="bg-zinc-800/50 rounded-xl p-4">
                                   <div className="flex items-start gap-3">
-                                    <PecaThumb nome={peca.nome} tecido={peca.tecido} cor={peca.cor} />
+                                    <div
+                                      className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center border border-white/10"
+                                      style={{ backgroundColor: peca.cor + "33", borderColor: peca.cor + "55" }}
+                                    >
+                                      <div className="w-5 h-5 rounded-full" style={{ backgroundColor: peca.cor }} />
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-baseline justify-between gap-2">
                                         <span className="text-sm font-semibold text-zinc-200">{peca.nome}</span>
