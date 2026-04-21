@@ -7,10 +7,7 @@ import GoogleProvider from "next-auth/providers/google";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  // "database" stores the session in the DB; the cookie is just a small
-  // random token (~40 chars). This permanently fixes 494 REQUEST_HEADER_TOO_LARGE
-  // caused by large JWTs being sent on every request.
-  session: { strategy: "database", maxAge: 30 * 24 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID ?? "",
@@ -41,10 +38,31 @@ export const authOptions: NextAuthOptions = {
     signIn: "/entrar",
   },
   callbacks: {
-    // With database strategy, "user" comes from the DB row — no JWT involved.
-    async session({ session, user }) {
-      if (session.user && user?.id) {
-        (session.user as { id?: string }).id = user.id;
+    async jwt({ token, user }) {
+      // Only store the user id. Strip everything else — especially
+      // "picture" which can be a 400 KB base64 data URL and causes
+      // 494 REQUEST_HEADER_TOO_LARGE on Vercel.
+      if (user) token.sub = user.id;
+      token.name    = undefined;
+      token.email   = undefined;
+      token.picture = undefined;
+      return token;
+    },
+    async session({ session, token }) {
+      if (token.sub) {
+        // Fetch only the fields we need — never the image (can be 400 KB)
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { id: true, name: true, email: true },
+        });
+        if (dbUser) {
+          session.user = {
+            id:    dbUser.id,
+            name:  dbUser.name  ?? session.user?.name  ?? null,
+            email: dbUser.email ?? session.user?.email ?? null,
+            image: null, // never embed image in session — fetch separately when needed
+          } as typeof session.user;
+        }
       }
       return session;
     },
