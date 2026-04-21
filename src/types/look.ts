@@ -16,6 +16,8 @@ export interface PecaGerada {
   corte?: string;
   detalhes?: string;
   lojas?: string[];
+  /** Short English search query used to find a representative fashion photo */
+  imagemQuery?: string;
 }
 
 export interface LookGerado {

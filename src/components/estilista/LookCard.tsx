@@ -1,10 +1,68 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { LookGerado } from "@/types/look";
-
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { LookGerado, PecaGerada } from "@/types/look";
 import { getStoreSearchUrl } from "@/lib/store-urls";
+
+// ── Piece thumbnail ──────────────────────────────────────────────────────────
+
+function PieceImage({ peca }: { peca: PecaGerada }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    if (!peca.imagemQuery) return;
+
+    // Check sessionStorage cache first
+    const cacheKey = `pimg_${peca.imagemQuery}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      setSrc(cached === "null" ? null : cached);
+      setLoaded(true);
+      return;
+    }
+
+    fetch(`/api/fashion-image?q=${encodeURIComponent(peca.imagemQuery)}`)
+      .then((r) => r.json())
+      .then(({ url }: { url: string | null }) => {
+        setSrc(url);
+        sessionStorage.setItem(cacheKey, url ?? "null");
+        setLoaded(true);
+      })
+      .catch(() => {
+        setLoaded(true);
+      });
+  }, [peca.imagemQuery]);
+
+  // Color-based placeholder (always shown while loading or when no image)
+  const placeholder = (
+    <div
+      className="w-14 h-14 rounded-xl shrink-0 flex items-center justify-center border border-white/10"
+      style={{ backgroundColor: peca.cor + "33", borderColor: peca.cor + "55" }}
+    >
+      <div className="w-7 h-7 rounded-full" style={{ backgroundColor: peca.cor }} />
+    </div>
+  );
+
+  if (!loaded || errored || !src) return placeholder;
+
+  return (
+    <div className="w-14 h-14 rounded-xl shrink-0 overflow-hidden border border-zinc-700 relative">
+      <Image
+        src={src}
+        alt={peca.nome}
+        fill
+        sizes="56px"
+        className="object-cover"
+        onError={() => setErrored(true)}
+      />
+    </div>
+  );
+}
+
+// ── Main card ────────────────────────────────────────────────────────────────
 
 interface LookCardProps {
   look: LookGerado;
@@ -12,7 +70,6 @@ interface LookCardProps {
 }
 
 export default function LookCard({ look, index }: LookCardProps) {
-  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -51,7 +108,7 @@ export default function LookCard({ look, index }: LookCardProps) {
   }
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-zinc-800">
         <div className="flex items-start justify-between">
@@ -80,25 +137,27 @@ export default function LookCard({ look, index }: LookCardProps) {
         </div>
       </div>
 
-      {/* Peças */}
-      <div className="p-6 space-y-4">
+      {/* Peças com foto */}
+      <div className="p-6 space-y-4 flex-1">
         {look.pecas.map((peca, i) => (
-          <div key={i} className="flex items-start gap-3">
-            <div
-              className="w-3 h-3 rounded-full mt-1.5 shrink-0"
-              style={{ backgroundColor: peca.cor }}
-            />
+          <div key={i} className="flex gap-3">
+            {/* Thumbnail */}
+            <PieceImage peca={peca} />
+
+            {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm font-medium text-zinc-200 truncate">
+                <span className="text-sm font-semibold text-zinc-100 truncate">
                   {peca.nome}
                 </span>
-                <span className="text-sm text-zinc-500 shrink-0">
+                <span className="text-sm font-bold text-green-400 shrink-0">
                   R${peca.preco.toFixed(0)}
                 </span>
               </div>
-              <p className="text-xs text-zinc-500 mt-0.5">{peca.descricao}</p>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
+              <p className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{peca.descricao}</p>
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1 mt-1.5">
                 {peca.tecido && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400">
                     {peca.tecido}
@@ -110,20 +169,21 @@ export default function LookCard({ look, index }: LookCardProps) {
                   </span>
                 )}
               </div>
-              {/* Lojas sugeridas - clicáveis */}
+
+              {/* Lojas */}
               {peca.lojas && peca.lojas.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  <span className="text-xs text-zinc-600">Onde encontrar:</span>
+                <div className="flex flex-wrap gap-1.5 mt-1.5 items-center">
+                  <span className="text-xs text-zinc-600">Ver em:</span>
                   {peca.lojas.map((loja, j) => (
                     <a
                       key={j}
                       href={getStoreSearchUrl(loja, peca.nome)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/25 hover:border-purple-400/40 transition-colors cursor-pointer flex items-center gap-1"
+                      className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/25 hover:border-purple-400/40 transition-colors flex items-center gap-1"
                     >
                       {loja}
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                     </a>
@@ -182,7 +242,6 @@ export default function LookCard({ look, index }: LookCardProps) {
         </button>
       </div>
 
-      {/* Save error */}
       {saveError && (
         <div className="px-6 pb-4">
           <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">

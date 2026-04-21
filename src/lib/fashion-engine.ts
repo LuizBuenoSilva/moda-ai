@@ -147,14 +147,28 @@ function gerarLookOffline(input: LookInput, paleta: string[], nomeLook: string):
   const corShoe = pickRandom(shoe.cores);
   const corAcc = acc ? pickRandom(acc.cores) : "#c0c0c0";
 
-  const pecas: Array<{ categoria: "top" | "bottom" | "shoes" | "accessory"; nome: string; descricao: string; cor: string; preco: number; tecido?: string; corte?: string; lojas: string[] }> = [
-    { categoria: "top" as const, nome: top.nome, descricao: top.descricao, cor: corTop || pickRandom(top.cores), preco: topPreco, tecido: top.tecido || undefined, corte: top.corte || undefined, lojas: top.lojas },
-    { categoria: "bottom" as const, nome: bottom.nome, descricao: bottom.descricao, cor: corBottom || pickRandom(bottom.cores), preco: bottomPreco, tecido: bottom.tecido || undefined, corte: bottom.corte || undefined, lojas: bottom.lojas },
-    { categoria: "shoes" as const, nome: shoe.nome, descricao: shoe.descricao, cor: corShoe || pickRandom(shoe.cores), preco: shoePreco, tecido: shoe.tecido || undefined, corte: shoe.corte || undefined, lojas: shoe.lojas },
+  // Build a short English query for photo search based on name + cut + fabric
+  function buildQuery(p: PecaDB, cor: string): string {
+    const colorMap: Record<string, string> = {
+      "#ffffff": "white", "#000000": "black", "#1a1a2e": "dark navy", "#2c3e50": "dark blue",
+      "#f5f5dc": "beige", "#d4c5a9": "beige", "#8b4513": "brown", "#c0392b": "red",
+      "#ffd700": "gold", "#c0c0c0": "silver", "#4682b4": "blue", "#556b2f": "olive",
+      "#800020": "burgundy", "#ffb6c1": "pink", "#4a148c": "purple",
+    };
+    const colorWord = colorMap[cor] || "";
+    const parts = [colorWord, p.corte || "", p.tecido || "", p.nome.split(" ").slice(0, 3).join(" "), "fashion"]
+      .filter(Boolean).join(" ");
+    return parts.slice(0, 60);
+  }
+
+  const pecas: Array<{ categoria: "top" | "bottom" | "shoes" | "accessory"; nome: string; descricao: string; cor: string; preco: number; tecido?: string; corte?: string; lojas: string[]; imagemQuery: string }> = [
+    { categoria: "top" as const, nome: top.nome, descricao: top.descricao, cor: corTop || pickRandom(top.cores), preco: topPreco, tecido: top.tecido || undefined, corte: top.corte || undefined, lojas: top.lojas, imagemQuery: buildQuery(top, corTop || top.cores[0]) },
+    { categoria: "bottom" as const, nome: bottom.nome, descricao: bottom.descricao, cor: corBottom || pickRandom(bottom.cores), preco: bottomPreco, tecido: bottom.tecido || undefined, corte: bottom.corte || undefined, lojas: bottom.lojas, imagemQuery: buildQuery(bottom, corBottom || bottom.cores[0]) },
+    { categoria: "shoes" as const, nome: shoe.nome, descricao: shoe.descricao, cor: corShoe || pickRandom(shoe.cores), preco: shoePreco, tecido: shoe.tecido || undefined, corte: shoe.corte || undefined, lojas: shoe.lojas, imagemQuery: buildQuery(shoe, corShoe || shoe.cores[0]) },
   ];
 
   if (acc && remaining > 0) {
-    pecas.push({ categoria: "accessory" as const, nome: acc.nome, descricao: acc.descricao, cor: corAcc, preco: Math.min(accPreco, remaining), tecido: acc.tecido || undefined, corte: acc.corte || undefined, lojas: acc.lojas });
+    pecas.push({ categoria: "accessory" as const, nome: acc.nome, descricao: acc.descricao, cor: corAcc, preco: Math.min(accPreco, remaining), tecido: acc.tecido || undefined, corte: acc.corte || undefined, lojas: acc.lojas, imagemQuery: buildQuery(acc, corAcc) });
   }
 
   const outfitJson: OutfitJson = {
@@ -195,17 +209,27 @@ export async function gerarLooks(input: LookInput): Promise<LookGerado[]> {
   try {
     const anthropic = new Anthropic();
 
-    const prompt = `Você é um stylist profissional. Monte exatamente 3 looks completos.
+    const prompt = `Você é um stylist profissional brasileiro. Monte exatamente 3 looks completos.
 
 DADOS: Estilo: ${input.estilo} | Ocasião: ${input.ocasiao} | Orçamento: R$${input.orcamento}${input.genero ? ` | Gênero: ${input.genero}` : ""}${input.preferencias ? ` | Preferências: ${input.preferencias}` : ""}
 
+TABELA DE PREÇOS REAIS BR 2024 (use como referência):
+- Camiseta básica: Renner/C&A R$39-89 | Zara R$99-199 | Reserva/Hering R$59-129
+- Calça jeans: Renner R$89-169 | Levi's R$199-399 | Zara R$149-299 | C&A R$69-139
+- Tênis casual: Renner R$99-179 | Adidas Originals R$299-549 | Nike R$299-699 | Shein R$59-119
+- Jaqueta/blazer: C&A R$89-189 | Zara R$199-499 | Renner R$129-249
+- Bota/sapato: Arezzo R$199-499 | Democrata R$179-349 | Renner R$99-199
+- Acessório simples: Renner/C&A R$19-69 | Vivara R$89-399
+- Bolsa: Arezzo R$199-499 | Renner R$59-149
+
 REGRAS:
 - Cada look: top + bottom + shoes + 1 acessório
-- Preço total <= R$${input.orcamento}. Cores em hex. Preços reais BR. 3 looks diferentes
-- OBRIGATÓRIO: campo "lojas" em CADA peça com 2-3 lojas brasileiras reais (Renner, Zara, C&A, Riachuelo, Hering, Nike, Adidas, Farm, Amaro, Arezzo, Zattini, Netshoes, Decathlon, Shein, Reserva, Levi's, etc.)
+- Preço total de cada look <= R$${input.orcamento}. Distribua proporcionalmente.
+- Cores em hex. 3 looks visualmente diferentes entre si.
+- OBRIGATÓRIO em CADA peça: "lojas" (2-3 lojas BR reais) e "imagemQuery" (5-8 palavras em INGLÊS descrevendo a peça para busca de foto, ex: "white slim fit linen blazer women")
 
-Responda APENAS JSON válido (sem markdown, sem texto antes ou depois):
-[{"nome":"...","descricao":"...","estilo":"${input.estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2","Loja3"]}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
+Responda APENAS JSON válido (sem markdown):
+[{"nome":"...","descricao":"...","estilo":"${input.estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2"],"imagemQuery":"..."}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
 
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
