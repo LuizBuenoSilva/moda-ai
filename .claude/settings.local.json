@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma *)",
+      "Bash(npx next *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
+      "Bash(npx vercel *)",
+      "Bash(vercel env *)",
+      "Bash(vercel --prod --yes)",
+      "Bash(node -e ' *)",
+      "Bash(npm list *)"
+    ]
+  }
+}
