@@ -5,23 +5,9 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 
-const isProduction = process.env.NODE_ENV === "production";
-
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
-  // Limit maxAge on temporary OAuth cookies so they don't accumulate
-  // and overflow the 8 KB Vercel request-header limit (494 error).
-  cookies: {
-    pkceCodeVerifier: {
-      name: isProduction ? "__Secure-next-auth.pkce.code_verifier" : "next-auth.pkce.code_verifier",
-      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction, maxAge: 900 },
-    },
-    state: {
-      name: isProduction ? "__Secure-next-auth.state" : "next-auth.state",
-      options: { httpOnly: true, sameSite: "lax", path: "/", secure: isProduction, maxAge: 900 },
-    },
-  },
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID ?? "",
@@ -52,8 +38,19 @@ export const authOptions: NextAuthOptions = {
     signIn: "/entrar",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      // Keep JWT minimal — only store the user id.
+      // Never embed OAuth account tokens; they bloat the cookie
+      // and can cause 494 REQUEST_HEADER_TOO_LARGE on Vercel.
       if (user) token.sub = user.id;
+      if (account) {
+        // Drop all OAuth provider data from the token
+        delete (token as Record<string, unknown>).access_token;
+        delete (token as Record<string, unknown>).refresh_token;
+        delete (token as Record<string, unknown>).id_token;
+        delete (token as Record<string, unknown>).provider;
+        delete (token as Record<string, unknown>).providerAccountId;
+      }
       return token;
     },
     async session({ session, token }) {
