@@ -58,12 +58,13 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
   const isBald    = hs.includes("careca") || hs.includes("raspado");
   const isLong    = hs.includes("long")   || hs.includes("comprido");
   const isCurly   = hs.includes("cach")   || hs.includes("crespo") || hs.includes("afro");
-  const hairMat   = useMemo(() => ({ color: hairColor, roughness: 0.88, metalness: 0 }), [hairColor]);
+  // coque = bun — default when no specific style is set
+  const isBun     = hs.includes("coque")  || hs.includes("bun")    || hs.includes("preso") || (!isLong && !isCurly && !isBald);
+  const hairMat   = useMemo(() => ({ color: hairColor, roughness: 0.85, metalness: 0 }), [hairColor]);
 
   // Model: feet at Y≈0, head top at Y≈1.656, head center ≈ Y 1.56
-  // We place hair slightly above the head center
-  const headY = 1.60;
-  const hairR = 0.098;
+  const headY = 1.595; // center of head
+  const headR = 0.100; // approx head radius at this model's scale
 
   return (
     <group>
@@ -71,35 +72,90 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
       <primitive object={scene} />
 
       {/* ── Hair ── */}
-      {!isBald && (
+      {!isBald && isBun && (
         <group position={[0, headY, 0]}>
-          {/* Top cap */}
-          <mesh scale={isCurly ? [1.10, 1.02, 1.10] : [1.02, 0.82, 1.02]}>
-            <sphereGeometry args={[isCurly ? hairR * 1.12 : hairR, 40, 28, 0, Math.PI * 2, 0, Math.PI * 0.60]} />
+          {/* ── Tight scalp layer — hair pulled back, hugs the skull ── */}
+          {/* Top of skull (slightly thicker than head) */}
+          <mesh scale={[1.01, 0.72, 1.01]}>
+            <sphereGeometry args={[headR * 1.04, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.65]} />
             <meshStandardMaterial {...hairMat} />
           </mesh>
-          {/* Back */}
-          <mesh position={[0, -0.068, -0.058]} scale={isLong ? [1, 1.65, 1] : [1, 1, 1]}>
-            <sphereGeometry args={[isCurly ? hairR * 1.10 : hairR * 0.98, 28, 22]} />
+          {/* Back of head — hair running to bun */}
+          <mesh position={[0, 0.000, -headR * 0.88]}>
+            <sphereGeometry args={[headR * 0.90, 36, 28]} />
             <meshStandardMaterial {...hairMat} />
           </mesh>
-          {/* Sides */}
+          {/* Nape — back lower */}
+          <mesh position={[0, -headR * 0.82, -headR * 0.72]} scale={[0.88, 0.60, 0.75]}>
+            <sphereGeometry args={[headR, 28, 22]} />
+            <meshStandardMaterial {...hairMat} />
+          </mesh>
+          {/* Temples sides */}
           {([-1, 1] as const).map((s, i) => (
-            <mesh key={i} position={[s * 0.054, -0.024, -0.020]}>
-              <sphereGeometry args={[isCurly ? hairR * 0.98 : hairR * 0.88, 18, 14, s < 0 ? 0 : Math.PI, Math.PI, 0, Math.PI * 0.72]} />
+            <mesh key={i} position={[s * headR * 0.92, -0.012, -0.015]} scale={[0.52, 0.70, 0.55]}>
+              <sphereGeometry args={[headR, 20, 16]} />
               <meshStandardMaterial {...hairMat} />
             </mesh>
           ))}
-          {/* Long hair strand */}
+
+          {/* ── Bun at crown ── */}
+          {/* Main bun body — flattened dome sitting at top-back of skull */}
+          <group position={[0, headR * 0.62, -headR * 0.28]}>
+            {/* Core bun sphere */}
+            <mesh scale={[1.0, 0.62, 1.0]}>
+              <sphereGeometry args={[0.062, 36, 28]} />
+              <meshStandardMaterial {...hairMat} />
+            </mesh>
+            {/* Outer wrap ring — gives the "twisted" bun look */}
+            <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.52]}>
+              <torusGeometry args={[0.044, 0.018, 14, 36]} />
+              <meshStandardMaterial {...hairMat} />
+            </mesh>
+            {/* Second wrap ring — slightly larger, offset */}
+            <mesh rotation={[Math.PI / 2, 0.38, 0]} scale={[1.12, 1.12, 0.48]}>
+              <torusGeometry args={[0.038, 0.013, 12, 32]} />
+              <meshStandardMaterial {...hairMat} />
+            </mesh>
+            {/* Hair tie */}
+            <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.002]}>
+              <torusGeometry args={[0.048, 0.004, 8, 32]} />
+              <meshStandardMaterial color="#1a1a1a" roughness={0.5} metalness={0.1} />
+            </mesh>
+          </group>
+
+          {/* ── Wispy strands at temples (natural) ── */}
+          {([-1, 1] as const).map((s, i) => (
+            <mesh key={i}
+              position={[s * headR * 0.82, -headR * 0.28, headR * 0.72]}
+              rotation={[0.28, s * 0.18, 0]}
+              scale={[0.28, 1, 0.22]}
+            >
+              <capsuleGeometry args={[0.010, 0.058, 6, 10]} />
+              <meshStandardMaterial {...hairMat} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {/* Other styles fallback */}
+      {!isBald && !isBun && (
+        <group position={[0, headY, 0]}>
+          <mesh scale={[1.02, isLong ? 0.86 : 0.82, 1.02]}>
+            <sphereGeometry args={[headR * 1.04, 40, 28, 0, Math.PI * 2, 0, Math.PI * 0.60]} />
+            <meshStandardMaterial {...hairMat} />
+          </mesh>
+          <mesh position={[0, -headR * 0.68, -headR * 0.58]} scale={isLong ? [1, 1.80, 1] : [1, 1, 1]}>
+            <sphereGeometry args={[headR * 0.98, 28, 22]} />
+            <meshStandardMaterial {...hairMat} />
+          </mesh>
           {isLong && (
-            <mesh position={[0, -0.200, -0.072]}>
-              <capsuleGeometry args={[0.062, 0.240, 10, 18]} />
+            <mesh position={[0, -headR * 2.20, -headR * 0.72]}>
+              <capsuleGeometry args={[0.062, 0.260, 10, 18]} />
               <meshStandardMaterial {...hairMat} />
             </mesh>
           )}
-          {/* Curly puffs */}
           {isCurly && ([[-0.100, 0.018], [0, 0.042], [0.100, 0.018]] as const).map(([x, z], i) => (
-            <mesh key={i} position={[x, hairR * 0.5, z]}>
+            <mesh key={i} position={[x, headR * 0.5, z]}>
               <sphereGeometry args={[0.052, 14, 12]} />
               <meshStandardMaterial {...hairMat} />
             </mesh>
