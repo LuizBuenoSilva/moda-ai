@@ -58,9 +58,10 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
       }
     });
 
-    // Head centre = model top - ~1 head-radius (≈11% of total height)
+    // Head radius ≈ 6.5% of total height (anatomical ratio)
     const totalH = fullBox.max.y - fullBox.min.y;
-    const headRadius = totalH * 0.075;
+    const headRadius = totalH * 0.065;
+    // headY = top of model minus one head-radius = head centre
     const computedHeadY = fullBox.max.y - headRadius;
 
     return { topMeshes: tops, bottomMeshes: bottoms, headY: computedHeadY, headR: headRadius };
@@ -125,53 +126,44 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
 
       {/* ════ BUN (coque) ════ */}
       {isBun && (
-        <group position={[0, headY, 0]}>
-          {/* Scalp cap — dome covering top of skull */}
-          <mesh scale={[1, 0.55, 1]}>
-            <sphereGeometry args={[hR * 1.05, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.70]} />
-            <meshStandardMaterial {...hm} />
-          </mesh>
-          {/* Back coverage */}
-          <mesh position={[0, 0, -hR * 0.80]} scale={[0.80, 0.55, 0.65]}>
-            <sphereGeometry args={[hR * 1.05, 36, 24]} />
+        <group>
+          {/*
+            KEY: all hair pieces are positioned BEHIND the head centre (negative Z offset)
+            so they never overlap the face.
+            Head centre = [0, headY, 0].  Face is at Z ≈ +hR*0.75.
+            Safe zone for hair: Z < -hR*0.10
+          */}
+
+          {/* 1. Top coverage — sphere offset behind head, slightly above centre */}
+          <mesh position={[0, headY + hR * 0.18, -hR * 0.38]} scale={[0.90, 0.58, 0.72]}>
+            <sphereGeometry args={[hR, 36, 28]} />
             <meshStandardMaterial {...hm} />
           </mesh>
 
-          {/* BUN BALL at crown */}
-          <group position={[0, hR * 0.52, -hR * 0.22]}>
-            {/* Core */}
-            <mesh scale={[1.0, 0.62, 1.0]}>
-              <sphereGeometry args={[hR * 0.56, 36, 28]} />
+          {/* 2. Back/nape coverage */}
+          <mesh position={[0, headY - hR * 0.18, -hR * 0.82]} scale={[0.82, 0.66, 0.60]}>
+            <sphereGeometry args={[hR, 32, 22]} />
+            <meshStandardMaterial {...hm} />
+          </mesh>
+
+          {/* 3. BUN at crown-back */}
+          <group position={[0, headY + hR * 0.58, -hR * 0.30]}>
+            {/* Bun core */}
+            <mesh scale={[1.0, 0.66, 1.0]}>
+              <sphereGeometry args={[hR * 0.44, 32, 24]} />
               <meshStandardMaterial {...hm} />
             </mesh>
-            {/* Twist ring 1 */}
+            {/* Twist torus */}
             <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.48]}>
-              <torusGeometry args={[hR * 0.40, hR * 0.16, 14, 36]} />
+              <torusGeometry args={[hR * 0.30, hR * 0.11, 12, 32]} />
               <meshStandardMaterial {...hm} />
             </mesh>
-            {/* Twist ring 2 */}
-            <mesh rotation={[Math.PI / 2, 0.42, 0]} scale={[1.12, 1.12, 0.44]}>
-              <torusGeometry args={[hR * 0.34, hR * 0.12, 12, 32]} />
-              <meshStandardMaterial {...hm} />
-            </mesh>
-            {/* Elastic tie */}
+            {/* Elastic hair tie */}
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[hR * 0.44, hR * 0.038, 8, 32]} />
+              <torusGeometry args={[hR * 0.34, hR * 0.028, 8, 32]} />
               <meshStandardMaterial color="#1a1a1a" roughness={0.5} metalness={0.2} />
             </mesh>
           </group>
-
-          {/* Wispy temple strands */}
-          {([-1, 1] as const).map((s, i) => (
-            <mesh key={i}
-              position={[s * hR * 0.78, -hR * 0.32, hR * 0.68]}
-              rotation={[0.28, s * 0.15, 0]}
-              scale={[0.25, 1, 0.20]}
-            >
-              <capsuleGeometry args={[hR * 0.10, hR * 0.52, 6, 10]} />
-              <meshStandardMaterial {...hm} />
-            </mesh>
-          ))}
         </group>
       )}
 
