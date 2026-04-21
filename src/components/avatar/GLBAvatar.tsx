@@ -128,39 +128,38 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
       {isBun && (
         <group>
           {/*
-            KEY: all hair pieces are positioned BEHIND the head centre (negative Z offset)
-            so they never overlap the face.
-            Head centre = [0, headY, 0].  Face is at Z ≈ +hR*0.75.
-            Safe zone for hair: Z < -hR*0.10
+            headY  = centre of head (fullBox.max.y - hR)
+            hR     = head radius (~0.108 for this model)
+            Crown  = headY + hR  ≈ fullBox.max.y
+            Eyes   ≈ headY + hR*0.30
+            Hair must stay ABOVE headY + hR*0.30 and BEHIND Z = -hR*0.10
           */}
 
-          {/* 1. Top coverage — sphere offset behind head, slightly above centre */}
-          <mesh position={[0, headY + hR * 0.18, -hR * 0.38]} scale={[0.90, 0.58, 0.72]}>
+          {/* Tight scalp layer — only the very top of the skull */}
+          <mesh position={[0, headY + hR * 0.80, -hR * 0.15]} scale={[0.85, 0.48, 0.80]}>
             <sphereGeometry args={[hR, 36, 28]} />
             <meshStandardMaterial {...hm} />
           </mesh>
 
-          {/* 2. Back/nape coverage */}
-          <mesh position={[0, headY - hR * 0.18, -hR * 0.82]} scale={[0.82, 0.66, 0.60]}>
-            <sphereGeometry args={[hR, 32, 22]} />
+          {/* Nape — thin strip at the back going down to neck */}
+          <mesh position={[0, headY + hR * 0.22, -hR * 0.92]} scale={[0.70, 0.55, 0.45]}>
+            <sphereGeometry args={[hR, 30, 22]} />
             <meshStandardMaterial {...hm} />
           </mesh>
 
-          {/* 3. BUN at crown-back */}
-          <group position={[0, headY + hR * 0.58, -hR * 0.30]}>
-            {/* Bun core */}
-            <mesh scale={[1.0, 0.66, 1.0]}>
-              <sphereGeometry args={[hR * 0.44, 32, 24]} />
+          {/* BUN — clearly protruding ball at the crown */}
+          <group position={[0, headY + hR * 0.96, -hR * 0.36]}>
+            <mesh scale={[1.0, 0.70, 1.0]}>
+              <sphereGeometry args={[hR * 0.42, 32, 24]} />
               <meshStandardMaterial {...hm} />
             </mesh>
-            {/* Twist torus */}
-            <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.48]}>
-              <torusGeometry args={[hR * 0.30, hR * 0.11, 12, 32]} />
+            <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.50]}>
+              <torusGeometry args={[hR * 0.28, hR * 0.10, 12, 32]} />
               <meshStandardMaterial {...hm} />
             </mesh>
-            {/* Elastic hair tie */}
+            {/* Elastic */}
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[hR * 0.34, hR * 0.028, 8, 32]} />
+              <torusGeometry args={[hR * 0.32, hR * 0.026, 8, 32]} />
               <meshStandardMaterial color="#1a1a1a" roughness={0.5} metalness={0.2} />
             </mesh>
           </group>
