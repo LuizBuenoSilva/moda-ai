@@ -24,6 +24,9 @@ export default function ContaPage() {
     hairColor: "",
     bodyType: "",
     height: "",
+    shirtColor: "",
+    pantsColor: "",
+    shoeColor: "",
   });
 
   // Home look form state
@@ -65,6 +68,9 @@ export default function ContaPage() {
             hairColor: d.profile.hairColor ?? "",
             bodyType: d.profile.bodyType ?? "",
             height: d.profile.height ?? "",
+            shirtColor: d.profile.shirtColor ?? "",
+            pantsColor: d.profile.pantsColor ?? "",
+            shoeColor: d.profile.shoeColor ?? "",
           });
         }
       }
@@ -230,6 +236,57 @@ export default function ContaPage() {
               <option value="baixo">Baixo / Petite</option>
               <option value="medio">Médio</option>
               <option value="alto">Alto</option>
+            </select>
+          </div>
+          <p className="text-xs text-zinc-500 pt-1">Roupas do avatar</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select
+              value={avatar.shirtColor}
+              onChange={(e) => setAvatar((v) => ({ ...v, shirtColor: e.target.value }))}
+              className="px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm"
+            >
+              <option value="">Cor da camisa</option>
+              <option value="#8899bb">Azul acinzentado</option>
+              <option value="#ffffff">Branco</option>
+              <option value="#1a1a1a">Preto</option>
+              <option value="#c8c8c8">Cinza claro</option>
+              <option value="#4a4a4a">Cinza escuro</option>
+              <option value="#b03030">Vermelho</option>
+              <option value="#2060a0">Azul royal</option>
+              <option value="#207050">Verde</option>
+              <option value="#806000">Amarelo/Caramelo</option>
+              <option value="#7030a0">Roxo</option>
+              <option value="#c07030">Laranja</option>
+            </select>
+            <select
+              value={avatar.pantsColor}
+              onChange={(e) => setAvatar((v) => ({ ...v, pantsColor: e.target.value }))}
+              className="px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm"
+            >
+              <option value="">Cor da calça</option>
+              <option value="#1e2640">Azul escuro (jeans)</option>
+              <option value="#3a5080">Jeans médio</option>
+              <option value="#1a1a1a">Preto</option>
+              <option value="#4a4a4a">Cinza escuro</option>
+              <option value="#808080">Cinza</option>
+              <option value="#c8b060">Bege / Cáqui</option>
+              <option value="#603018">Marrom</option>
+              <option value="#ffffff">Branco</option>
+            </select>
+            <select
+              value={avatar.shoeColor}
+              onChange={(e) => setAvatar((v) => ({ ...v, shoeColor: e.target.value }))}
+              className="px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm"
+            >
+              <option value="">Cor do tênis/sapato</option>
+              <option value="#e8e8e8">Branco</option>
+              <option value="#1a1a1a">Preto</option>
+              <option value="#808080">Cinza</option>
+              <option value="#c8a060">Bege / Couro</option>
+              <option value="#b03030">Vermelho</option>
+              <option value="#2060a0">Azul</option>
+              <option value="#207050">Verde</option>
+              <option value="#f0a030">Laranja</option>
             </select>
           </div>
           <button onClick={saveAvatar} disabled={saving} className="px-4 py-2 rounded-xl gradient-bg text-white text-sm disabled:opacity-60">Salvar Avatar</button>

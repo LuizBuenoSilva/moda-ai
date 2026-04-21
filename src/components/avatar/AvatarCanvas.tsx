@@ -19,17 +19,18 @@ export default function AvatarCanvas({ outfitParams, autoRotate = true, appearan
       style={{ background: "#0a0a0f" }}
     >
       {/* Lighting */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
-      <directionalLight position={[-3, 3, -3]} intensity={0.3} />
-      <hemisphereLight
-        color="#ffffff"
-        groundColor="#444444"
-        intensity={0.4}
-      />
+      <ambientLight intensity={0.35} />
+      {/* Key light – warm front-top */}
+      <directionalLight position={[2, 5, 4]} intensity={1.6} castShadow color="#fff8f0" />
+      {/* Fill light – cool side */}
+      <directionalLight position={[-4, 3, 2]} intensity={0.6} color="#c8d8ff" />
+      {/* Rim / back light */}
+      <directionalLight position={[0, 2, -5]} intensity={0.4} color="#ffffff" />
+      {/* Ground bounce */}
+      <hemisphereLight color="#ffffff" groundColor="#303040" intensity={0.5} />
 
       {/* Environment for reflections */}
-      <Environment preset="city" />
+      <Environment preset="apartment" />
 
       {/* Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, 0]} receiveShadow>

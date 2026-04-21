@@ -54,11 +54,14 @@ function AvatarContent() {
           const data = await res.json();
           if (data.profile) {
             setAppearance({
-              skinTone: data.profile.skinTone || undefined,
-              hairColor: data.profile.hairColor || undefined,
-              hairStyle: data.profile.hairStyle || undefined,
-              bodyType: data.profile.bodyType || undefined,
-              height: data.profile.height || undefined,
+              skinTone:   data.profile.skinTone   || undefined,
+              hairColor:  data.profile.hairColor  || undefined,
+              hairStyle:  data.profile.hairStyle  || undefined,
+              bodyType:   data.profile.bodyType   || undefined,
+              height:     data.profile.height     || undefined,
+              shirtColor: data.profile.shirtColor || undefined,
+              pantsColor: data.profile.pantsColor || undefined,
+              shoeColor:  data.profile.shoeColor  || undefined,
             });
           }
         }
