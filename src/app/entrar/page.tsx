@@ -6,32 +6,36 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import ProfilePhotoUpload from "@/components/auth/ProfilePhotoUpload";
 
+/** Extract a safe same-origin pathname from the callbackUrl param */
+function safeCallbackUrl(raw: string | null): string {
+  if (!raw) return "/estilista";
+  try {
+    // full URL → take only pathname + search
+    const url = new URL(raw);
+    return url.pathname + url.search;
+  } catch {
+    // relative path — use as-is if it starts with /
+    return raw.startsWith("/") ? raw : "/estilista";
+  }
+}
+
 export default function EntrarPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [callbackUrl, setCallbackUrl] = useState("/estilista");
   const router = useRouter();
   const { status } = useSession();
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const cb = params.get("callbackUrl");
-    if (cb) {
-      try {
-        const url = new URL(cb);
-        setCallbackUrl(url.pathname + url.search);
-      } catch {
-        setCallbackUrl(cb);
-      }
-    }
-  }, []);
+  // Read callbackUrl once, server-side-safe
+  const callbackUrl =
+    typeof window !== "undefined"
+      ? safeCallbackUrl(new URLSearchParams(window.location.search).get("callbackUrl"))
+      : "/estilista";
 
+  // If already logged in, go straight to destination
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace(callbackUrl || "/estilista");
-    }
+    if (status === "authenticated") router.replace(callbackUrl);
   }, [status, callbackUrl, router]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -49,12 +53,7 @@ export default function EntrarPage() {
         const registerRes = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            email,
-            password,
-            image: profilePhoto,
-          }),
+          body: JSON.stringify({ name, email, password, image: profilePhoto }),
         });
 
         if (!registerRes.ok) {
@@ -73,7 +72,8 @@ export default function EntrarPage() {
         throw new Error("Email ou senha inválidos");
       }
 
-      router.push(callbackUrl);
+      // Redirect to main page after login / account creation
+      router.replace(callbackUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -92,7 +92,7 @@ export default function EntrarPage() {
         </p>
 
         <button
-          onClick={() => signIn("google", { callbackUrl })}
+          onClick={() => signIn("google", { callbackUrl, redirect: true })}
           className="w-full py-2.5 rounded-xl bg-white text-zinc-900 font-medium hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
