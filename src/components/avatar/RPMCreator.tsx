@@ -39,7 +39,7 @@ export default function RPMCreator({ onAvatarCreated, onClose }: Props) {
   }, [onAvatarCreated]);
 
   const rpmUrl =
-    "https://demo.readyplayer.me/avatar?frameApi&clearCache&bodyType=fullbody&language=pt";
+    "https://readyplayer.me/avatar?frameApi&clearCache&bodyType=fullbody&language=pt";
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950">

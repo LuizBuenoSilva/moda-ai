@@ -220,13 +220,44 @@ function AvatarContent() {
               </svg>
             </div>
           </div>
-        ) : (
+        ) : rpmAvatarUrl ? (
           <AvatarCanvas key={canvasKey} outfitParams={outfitParams} autoRotate={autoRotate} appearance={appearance} rpmAvatarUrl={rpmAvatarUrl} />
+        ) : (
+          /* Empty state — no avatar yet */
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-6 text-center">
+            {/* Avatar silhouette illustration */}
+            <div className="relative">
+              <div className="w-32 h-32 rounded-full bg-zinc-800/60 border border-zinc-700/50 flex items-center justify-center">
+                <svg className="w-16 h-16 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              {/* Glow ring */}
+              <div className="absolute inset-0 rounded-full bg-purple-500/10 blur-xl -z-10" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-white">Nenhum avatar criado</h2>
+              <p className="text-sm text-zinc-500 max-w-xs">
+                Crie seu avatar 3D personalizado e veja seus looks ganharem vida
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowRPMCreator(true)}
+              className="px-6 py-3 rounded-2xl gradient-bg text-white font-semibold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity pulse-glow"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Criar meu Avatar
+            </button>
+          </div>
         )}
       </div>
 
       {/* Outfit Info */}
-      {outfitParams && !loading && (
+      {outfitParams && !loading && rpmAvatarUrl && (
         <div className="px-6 py-3 border-t border-zinc-800 flex gap-4 overflow-x-auto">
           <div className="flex items-center gap-2 shrink-0">
             <div
