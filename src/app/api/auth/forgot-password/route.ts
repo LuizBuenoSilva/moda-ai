@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       const resetLink = `${baseUrl}/redefinir-senha/confirmar?token=${token}&email=${encodeURIComponent(normalizedEmail)}`;
 
       await resend.emails.send({
-        from: "Yuzo Style <noreply@yuzostyle.vercel.app>",
+        from: "Yuzo Style <onboarding@resend.dev>",
         to: user.email,
         subject: "Redefinição de senha — Yuzo Style",
         html: `
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     // Always return 200 to avoid email enumeration
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("forgot-password error:", err);
+    console.error("forgot-password error:", JSON.stringify(err, null, 2));
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
