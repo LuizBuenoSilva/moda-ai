@@ -1,12 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getStoreSearchUrl } from "@/lib/store-urls";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import type { PecaDesignGerada } from "@/types/designer";
+import type { LookGerado } from "@/types/look";
 
 const PecaSketch = dynamic(() => import("@/components/designer/PecaSketch"), { ssr: false });
+const LookCard   = dynamic(() => import("@/components/estilista/LookCard"),   { ssr: false });
+
+// ── Small piece thumbnail (fetches Pexels image) ─────────────────────────────
+function PecaThumb({ nome, tecido, cor }: { nome: string; tecido?: string | null; cor: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const q = `${tecido ?? ""} ${nome} fashion`.trim().slice(0, 60);
+    const key = `pimg_${q}`;
+    const cached = sessionStorage.getItem(key);
+    if (cached) { setSrc(cached === "null" ? null : cached); setLoaded(true); return; }
+    fetch(`/api/fashion-image?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(({ url }: { url: string | null }) => {
+        setSrc(url); sessionStorage.setItem(key, url ?? "null"); setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [nome, tecido]);
+
+  if (!loaded || !src) {
+    return (
+      <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center border border-white/10"
+        style={{ backgroundColor: cor + "33" }}>
+        <div className="w-6 h-6 rounded-full" style={{ backgroundColor: cor }} />
+      </div>
+    );
+  }
+  return (
+    <div className="w-12 h-12 rounded-xl shrink-0 overflow-hidden border border-zinc-700 relative">
+      <Image src={src} alt={nome} fill sizes="48px" className="object-cover"
+        onError={() => setSrc(null)} />
+    </div>
+  );
+}
 
 interface LookSalvo {
   id: string;
@@ -89,6 +126,10 @@ export default function ColecaoPage() {
   const [expandedDesign, setExpandedDesign] = useState<DesignSalvo | null>(null);
   const [renamingPasta, setRenamingPasta] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  // AI suggestion state
+  const [suggestingLook, setSuggestingLook] = useState(false);
+  const [suggestedLook, setSuggestedLook] = useState<LookGerado | null>(null);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
 
   function designToPeca(d: DesignSalvo): PecaDesignGerada {
     return {
@@ -201,6 +242,36 @@ export default function ColecaoPage() {
     ? designs.filter(d => d.pastaId === selectedPasta)
     : designs;
   const relevantPastas = pastas.filter(p => p.tipo === tab || p.tipo === "ambos");
+
+  const handleSuggestLook = useCallback(async () => {
+    const source = filteredLooks.length ? filteredLooks : looks;
+    if (!source.length) return;
+    setSuggestingLook(true);
+    setSuggestError(null);
+    setSuggestedLook(null);
+    try {
+      const payload = source.slice(0, 6).map(l => ({
+        nome: l.nome,
+        estilo: l.estilo,
+        ocasiao: l.ocasiao,
+        precoEstimado: l.precoEstimado,
+        cores: l.cores,
+        pecas: l.pecas.map(p => ({ categoria: p.categoria, nome: p.nome, cor: p.cor, tecido: p.tecido, corte: p.corte })),
+      }));
+      const res = await fetch("/api/sugerir-look", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ looks: payload }),
+      });
+      if (!res.ok) throw new Error("Erro ao gerar sugestão");
+      const data = await res.json();
+      setSuggestedLook(data.look);
+    } catch (err) {
+      setSuggestError(err instanceof Error ? err.message : "Erro inesperado");
+    } finally {
+      setSuggestingLook(false);
+    }
+  }, [filteredLooks, looks]);
 
   if (loading) {
     return (
@@ -437,9 +508,82 @@ export default function ColecaoPage() {
           </div>
         )}
 
+        {/* ── Sugestão de look modal ───────────────────────────────────────── */}
+        {(suggestingLook || suggestedLook || suggestError) && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto"
+            onClick={() => { if (!suggestingLook) { setSuggestedLook(null); setSuggestError(null); } }}>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full my-8 overflow-hidden"
+              onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold gradient-text">✨ Sugestão da IA</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {selectedPasta
+                      ? `Baseada nos looks da pasta selecionada`
+                      : `Baseada em toda a sua coleção`}
+                  </p>
+                </div>
+                {!suggestingLook && (
+                  <button onClick={() => { setSuggestedLook(null); setSuggestError(null); }}
+                    className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                {suggestingLook && (
+                  <div className="py-12 text-center">
+                    <div className="w-12 h-12 mx-auto rounded-full gradient-bg pulse-glow flex items-center justify-center mb-4">
+                      <svg className="w-6 h-6 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                    <p className="text-zinc-400 text-sm">Analisando seu guarda-roupa...</p>
+                  </div>
+                )}
+                {suggestError && (
+                  <div className="py-8 text-center">
+                    <p className="text-red-400 text-sm mb-4">{suggestError}</p>
+                    <button onClick={handleSuggestLook}
+                      className="px-4 py-2 rounded-xl text-sm gradient-bg text-white hover:opacity-90 transition-opacity">
+                      Tentar novamente
+                    </button>
+                  </div>
+                )}
+                {suggestedLook && (
+                  <LookCard look={suggestedLook} index={0} />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Looks Tab */}
         {tab === "looks" && (
           <>
+            {/* AI suggest button */}
+            {filteredLooks.length > 0 && (
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={handleSuggestLook}
+                  disabled={suggestingLook}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium gradient-bg text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  {suggestingLook ? "Gerando..." : "Sugerir Look com IA"}
+                </button>
+              </div>
+            )}
+
             {filteredLooks.length === 0 ? (
               <div className="text-center py-16">
                 <svg className="w-16 h-16 mx-auto text-zinc-700 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -489,7 +633,7 @@ export default function ColecaoPage() {
                               return (
                                 <div key={peca.id} className="bg-zinc-800/50 rounded-xl p-4">
                                   <div className="flex items-start gap-3">
-                                    <div className="w-4 h-4 rounded-full mt-0.5 shrink-0 border border-zinc-600" style={{ backgroundColor: peca.cor }} />
+                                    <PecaThumb nome={peca.nome} tecido={peca.tecido} cor={peca.cor} />
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-baseline justify-between gap-2">
                                         <span className="text-sm font-semibold text-zinc-200">{peca.nome}</span>
