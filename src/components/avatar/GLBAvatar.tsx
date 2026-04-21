@@ -135,29 +135,34 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
             Hair must stay ABOVE headY + hR*0.30 and BEHIND Z = -hR*0.10
           */}
 
-          {/* Tight scalp layer — only the very top of the skull */}
-          <mesh position={[0, headY + hR * 0.80, -hR * 0.15]} scale={[0.85, 0.48, 0.80]}>
+          {/*
+            headY = head CENTRE.  headY + hR = CROWN (top of head).
+            Eyes ≈ headY.  Must stay above headY + hR*0.55 to clear eyebrows.
+            → anchor everything at the CROWN (headY + hR), not the centre.
+          */}
+
+          {/* Scalp cap — anchored AT the crown, hangs down only slightly */}
+          <mesh position={[0, headY + hR, -hR * 0.14]} scale={[0.90, 0.44, 0.82]}>
             <sphereGeometry args={[hR, 36, 28]} />
             <meshStandardMaterial {...hm} />
           </mesh>
 
-          {/* Nape — thin strip at the back going down to neck */}
-          <mesh position={[0, headY + hR * 0.22, -hR * 0.92]} scale={[0.70, 0.55, 0.45]}>
+          {/* Nape — back of head, from ear level down to neck */}
+          <mesh position={[0, headY + hR * 0.55, -hR * 0.94]} scale={[0.68, 0.60, 0.44]}>
             <sphereGeometry args={[hR, 30, 22]} />
             <meshStandardMaterial {...hm} />
           </mesh>
 
-          {/* BUN — clearly protruding ball at the crown */}
-          <group position={[0, headY + hR * 0.96, -hR * 0.36]}>
-            <mesh scale={[1.0, 0.70, 1.0]}>
+          {/* BUN — sitting on the crown, clearly above */}
+          <group position={[0, headY + hR * 1.12, -hR * 0.34]}>
+            <mesh scale={[1.0, 0.68, 1.0]}>
               <sphereGeometry args={[hR * 0.42, 32, 24]} />
               <meshStandardMaterial {...hm} />
             </mesh>
-            <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.50]}>
+            <mesh rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.48]}>
               <torusGeometry args={[hR * 0.28, hR * 0.10, 12, 32]} />
               <meshStandardMaterial {...hm} />
             </mesh>
-            {/* Elastic */}
             <mesh rotation={[Math.PI / 2, 0, 0]}>
               <torusGeometry args={[hR * 0.32, hR * 0.026, 8, 32]} />
               <meshStandardMaterial color="#1a1a1a" roughness={0.5} metalness={0.2} />
