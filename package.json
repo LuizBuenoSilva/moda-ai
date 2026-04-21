@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "node -e \"var c=require('child_process'),e={...process.env};e.DATABASE_URL=e.DATABASE_URL||'postgresql://x:x@localhost/x';e.DIRECT_URL=e.DIRECT_URL||'postgresql://x:x@localhost/x';c.execSync('prisma generate',{stdio:'inherit',env:e})\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
