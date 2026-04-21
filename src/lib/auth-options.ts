@@ -7,7 +7,10 @@ import GoogleProvider from "next-auth/providers/google";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  // "database" stores the session in the DB; the cookie is just a small
+  // random token (~40 chars). This permanently fixes 494 REQUEST_HEADER_TOO_LARGE
+  // caused by large JWTs being sent on every request.
+  session: { strategy: "database", maxAge: 30 * 24 * 60 * 60 },
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID ?? "",
@@ -38,24 +41,10 @@ export const authOptions: NextAuthOptions = {
     signIn: "/entrar",
   },
   callbacks: {
-    async jwt({ token, user, account }) {
-      // Keep JWT minimal — only store the user id.
-      // Never embed OAuth account tokens; they bloat the cookie
-      // and can cause 494 REQUEST_HEADER_TOO_LARGE on Vercel.
-      if (user) token.sub = user.id;
-      if (account) {
-        // Drop all OAuth provider data from the token
-        delete (token as Record<string, unknown>).access_token;
-        delete (token as Record<string, unknown>).refresh_token;
-        delete (token as Record<string, unknown>).id_token;
-        delete (token as Record<string, unknown>).provider;
-        delete (token as Record<string, unknown>).providerAccountId;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        (session.user as { id?: string }).id = token.sub;
+    // With database strategy, "user" comes from the DB row — no JWT involved.
+    async session({ session, user }) {
+      if (session.user && user?.id) {
+        (session.user as { id?: string }).id = user.id;
       }
       return session;
     },
