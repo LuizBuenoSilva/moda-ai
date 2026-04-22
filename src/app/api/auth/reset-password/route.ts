@@ -4,28 +4,21 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
-    const { token, email, password } = await req.json();
+    const { email, password } = await req.json();
 
-    if (!token || !email || !password || typeof password !== "string" || password.length < 6) {
+    if (!email || !password || typeof password !== "string" || password.length < 6) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const identifier = `reset:${normalizedEmail}`;
 
-    const record = await prisma.verificationToken.findFirst({
-      where: { identifier, token },
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
     });
 
-    if (!record) {
-      return NextResponse.json({ error: "Link inválido ou já utilizado" }, { status: 400 });
-    }
-
-    if (record.expires < new Date()) {
-      await prisma.verificationToken.delete({
-        where: { identifier_token: { identifier, token } },
-      });
-      return NextResponse.json({ error: "Link expirado. Solicite um novo." }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ error: "Email não encontrado" }, { status: 404 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -33,11 +26,6 @@ export async function POST(req: NextRequest) {
     await prisma.user.update({
       where: { email: normalizedEmail },
       data: { passwordHash },
-    });
-
-    // Invalidate the token after use
-    await prisma.verificationToken.delete({
-      where: { identifier_token: { identifier, token } },
     });
 
     return NextResponse.json({ ok: true });
