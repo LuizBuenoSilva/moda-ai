@@ -63,6 +63,13 @@ interface Pasta {
   _count: { looks: number; designs: number };
 }
 
+interface FotoPasta {
+  id: string;
+  imageUrl: string;
+  nome?: string | null;
+  createdAt: string;
+}
+
 function parseLojas(lojasField: string | null | undefined): string[] {
   if (!lojasField) return [];
   try {
@@ -92,6 +99,12 @@ export default function ColecaoPage() {
   const [expandedDesign, setExpandedDesign] = useState<DesignSalvo | null>(null);
   const [renamingPasta, setRenamingPasta] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  // Pasta photos state
+  const [pastaFotos, setPastaFotos] = useState<FotoPasta[]>([]);
+  const [loadingFotos, setLoadingFotos] = useState(false);
+  const [uploadingFolderPhoto, setUploadingFolderPhoto] = useState(false);
+  const folderPhotoInputRef = useRef<HTMLInputElement>(null);
+
   // AI suggestion state
   const [suggestingLook, setSuggestingLook] = useState(false);
   const [suggestedLook, setSuggestedLook] = useState<LookGerado | null>(null);
@@ -134,6 +147,37 @@ export default function ColecaoPage() {
       if (designsRes.ok) { const d = await designsRes.json(); setDesigns(d.designs); }
       if (pastasRes.ok) { const d = await pastasRes.json(); setPastas(d.pastas); }
     } finally { setLoading(false); }
+  }
+
+  async function fetchPastaFotos(pastaId: string) {
+    setLoadingFotos(true);
+    try {
+      const res = await fetch(`/api/pastas/${pastaId}/fotos`);
+      if (res.ok) { const d = await res.json(); setPastaFotos(d.fotos); }
+    } finally { setLoadingFotos(false); }
+  }
+
+  async function handleFolderPhotoUpload(file: File) {
+    if (!selectedPasta) return;
+    setUploadingFolderPhoto(true);
+    try {
+      const dataUrl = await resizeImage(file, 700, 0.78);
+      const res = await fetch(`/api/pastas/${selectedPasta}/fotos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: dataUrl, nome: file.name.replace(/\.[^.]+$/, "") }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setPastaFotos(prev => [...prev, d.foto]);
+      }
+    } finally { setUploadingFolderPhoto(false); }
+  }
+
+  async function handleDeleteFolderPhoto(fotoId: string) {
+    if (!selectedPasta) return;
+    await fetch(`/api/pastas/${selectedPasta}/fotos/${fotoId}`, { method: "DELETE" });
+    setPastaFotos(prev => prev.filter(f => f.id !== fotoId));
   }
 
   async function handleCreatePasta() {
@@ -255,13 +299,25 @@ export default function ColecaoPage() {
 
   const handleSuggestLook = useCallback(async () => {
     const source = filteredLooks.length ? filteredLooks : looks;
-    if (!source.length) return;
+    const temFotos = pastaFotos.length > 0 || source.some(l => l.imageUrl);
+    if (!source.length && !temFotos) return;
     setSuggestingLook(true);
     setSuggestError(null);
     setSuggestedLook(null);
     setSuggestCombinacao(null);
     try {
-      const payload = source.slice(0, 6).map(l => ({
+      // Include folder photos as synthetic "looks" for vision analysis
+      const pastaFotoLooks = pastaFotos.map((f, i) => ({
+        nome: f.nome ?? `Foto ${i + 1}`,
+        estilo: "casual",
+        ocasiao: "dia a dia",
+        precoEstimado: 0,
+        cores: "[]",
+        imageUrl: f.imageUrl,
+        pecas: [],
+      }));
+
+      const lookPayload = source.slice(0, 4).map(l => ({
         nome: l.nome,
         estilo: l.estilo,
         ocasiao: l.ocasiao,
@@ -270,6 +326,9 @@ export default function ColecaoPage() {
         imageUrl: l.imageUrl ?? null,
         pecas: l.pecas.map(p => ({ categoria: p.categoria, nome: p.nome, cor: p.cor, tecido: p.tecido, corte: p.corte })),
       }));
+
+      const payload = [...pastaFotoLooks, ...lookPayload].slice(0, 6);
+
       const res = await fetch("/api/sugerir-look", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -287,7 +346,7 @@ export default function ColecaoPage() {
     } finally {
       setSuggestingLook(false);
     }
-  }, [filteredLooks, looks]);
+  }, [filteredLooks, looks, pastaFotos]);
 
   if (loading) {
     return (
@@ -307,7 +366,7 @@ export default function ColecaoPage() {
 
   return (
     <div className="px-6 py-12 lg:px-8">
-      {/* Hidden file input for photo upload */}
+      {/* Hidden file input for look photo upload */}
       <input
         ref={photoInputRef}
         type="file"
@@ -317,6 +376,18 @@ export default function ColecaoPage() {
           const file = e.target.files?.[0];
           const id = photoTargetId.current;
           if (file && id) await handlePhotoUpload(id, file);
+          e.target.value = "";
+        }}
+      />
+      {/* Hidden file input for folder photo upload */}
+      <input
+        ref={folderPhotoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (file) await handleFolderPhotoUpload(file);
           e.target.value = "";
         }}
       />
@@ -343,7 +414,7 @@ export default function ColecaoPage() {
         {/* Folders bar */}
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
           <button
-            onClick={() => setSelectedPasta(null)}
+            onClick={() => { setSelectedPasta(null); setPastaFotos([]); }}
             className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${!selectedPasta ? "bg-zinc-700 text-white" : "bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800"}`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
@@ -370,7 +441,11 @@ export default function ColecaoPage() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setSelectedPasta(selectedPasta === pasta.id ? null : pasta.id)}
+                  onClick={() => {
+                    const next = selectedPasta === pasta.id ? null : pasta.id;
+                    setSelectedPasta(next);
+                    if (next) fetchPastaFotos(next); else setPastaFotos([]);
+                  }}
                   onDoubleClick={() => { setRenamingPasta(pasta.id); setRenameValue(pasta.nome); }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${selectedPasta === pasta.id ? "text-white" : "text-zinc-400 hover:text-zinc-200"}`}
                   style={{ backgroundColor: selectedPasta === pasta.id ? pasta.cor : undefined, border: `1px solid ${pasta.cor}40` }}
@@ -592,13 +667,27 @@ export default function ColecaoPage() {
                 )}
                 {suggestCombinacao && (
                   <div className="space-y-4">
+                    {/* Photos that were analysed */}
+                    {pastaFotos.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Fotos analisadas</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {pastaFotos.map(f => (
+                            <div key={f.id} className="w-16 h-16 rounded-xl overflow-hidden border border-zinc-700 shrink-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={f.imageUrl} alt={f.nome ?? "foto"} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <p className="text-sm text-zinc-200 leading-relaxed">{suggestCombinacao.combinacao}</p>
-                    <div className="bg-zinc-800/60 rounded-xl p-4 space-y-2">
-                      <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Peças para usar</p>
+                    <div className="bg-zinc-800/60 rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider">Peças para usar</p>
                       {suggestCombinacao.pecas_sugeridas.map((p, i) => (
                         <div key={i} className="text-sm">
                           <span className="text-zinc-200 font-medium">{p.peca}</span>
-                          <span className="text-zinc-500"> — {p.look}</span>
+                          <span className="text-zinc-500"> · {p.look}</span>
                           <p className="text-xs text-zinc-500 mt-0.5">{p.motivo}</p>
                         </div>
                       ))}
@@ -617,11 +706,76 @@ export default function ColecaoPage() {
           </div>
         )}
 
+        {/* ── Folder photo gallery (shown when a pasta is selected) ─────────── */}
+        {selectedPasta && (
+          <div className="mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-200">Fotos da pasta</h3>
+                <p className="text-xs text-zinc-500 mt-0.5">Suba fotos dos seus looks reais — a IA vai analisar e sugerir combinações</p>
+              </div>
+              <button
+                onClick={() => folderPhotoInputRef.current?.click()}
+                disabled={uploadingFolderPhoto}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {uploadingFolderPhoto ? (
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                )}
+                Adicionar foto
+              </button>
+            </div>
+
+            {loadingFotos ? (
+              <p className="text-xs text-zinc-500 py-2">Carregando fotos...</p>
+            ) : pastaFotos.length === 0 ? (
+              <button
+                onClick={() => folderPhotoInputRef.current?.click()}
+                className="w-full py-6 rounded-xl border-2 border-dashed border-zinc-700 hover:border-purple-500/50 text-zinc-500 hover:text-zinc-300 transition-colors text-sm flex flex-col items-center gap-2"
+              >
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                Clique para adicionar fotos dos seus looks reais
+              </button>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                {pastaFotos.map(foto => (
+                  <div key={foto.id} className="relative group aspect-square rounded-xl overflow-hidden border border-zinc-700">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={foto.imageUrl} alt={foto.nome ?? "foto"} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => handleDeleteFolderPhoto(foto.id)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      title="Remover foto"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                    {foto.nome && (
+                      <div className="absolute bottom-0 inset-x-0 bg-black/60 px-1.5 py-0.5">
+                        <p className="text-xs text-white truncate">{foto.nome}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {/* Add more button */}
+                <button
+                  onClick={() => folderPhotoInputRef.current?.click()}
+                  disabled={uploadingFolderPhoto}
+                  className="aspect-square rounded-xl border-2 border-dashed border-zinc-700 hover:border-purple-500/50 text-zinc-600 hover:text-zinc-400 transition-colors flex items-center justify-center"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Looks Tab */}
         {tab === "looks" && (
           <>
             {/* AI suggest button */}
-            {filteredLooks.length > 0 && (
+            {(filteredLooks.length > 0 || pastaFotos.length > 0 || looks.length > 0) && (
               <div className="flex justify-end mb-4">
                 <button
                   onClick={handleSuggestLook}

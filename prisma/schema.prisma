@@ -10,15 +10,25 @@ datasource db {
 }
 
 model Pasta {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   nome      String
-  tipo      String   // "looks" ou "designs"
-  cor       String   @default("#a855f7")
+  tipo      String      // "looks" ou "designs"
+  cor       String      @default("#a855f7")
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
   looks     Look[]
   designs   PecaDesign[]
+  fotos     FotoPasta[]
+}
+
+model FotoPasta {
+  id        String   @id @default(cuid())
+  pastaId   String
+  pasta     Pasta    @relation(fields: [pastaId], references: [id], onDelete: Cascade)
+  imageUrl  String   @db.Text
+  nome      String?
+  createdAt DateTime @default(now())
 }
 
 model Look {
