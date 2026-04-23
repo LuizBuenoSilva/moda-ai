@@ -36,29 +36,46 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
     const bottoms: THREE.Mesh[] = [];
     const fullBox = new THREE.Box3();
 
+    // Pass 1: build full bounding box of entire model
+    scene.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      fullBox.union(new THREE.Box3().setFromObject(obj));
+    });
+
+    const totalH   = fullBox.max.y - fullBox.min.y;
+    // Waist sits ~47% from floor; head starts at top ~17% of height
+    const midY      = fullBox.min.y + totalH * 0.47;
+    const headStartY = fullBox.max.y - totalH * 0.17;
+
+    // Pass 2: classify meshes by Y-centre (position beats name guessing)
     scene.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh)) return;
       obj.castShadow    = true;
       obj.receiveShadow = true;
 
-      const box = new THREE.Box3().setFromObject(obj);
-      fullBox.union(box);
-
       const n = obj.name.toLowerCase();
-      if (n.includes("tshirt") || n.includes("shirt") || n.includes("sleeve") || n.includes("blouse") || n.includes("top")) {
-        tops.push(obj);
-      } else if (n.includes("pants") || n.includes("pant") || n.includes("trouser") || n.includes("jean") || n.includes("skirt")) {
-        bottoms.push(obj);
+      // Skip body/skin, face features — they share a material that must not be overridden
+      if (n.includes("base") || n.includes("eye") || n.includes("teeth") ||
+          n.includes("tongue") || n.includes("hair") || n.includes("lash")) return;
+
+      const box    = new THREE.Box3().setFromObject(obj);
+      const centerY = (box.max.y + box.min.y) / 2;
+
+      // Skip head area
+      if (centerY > headStartY) return;
+
+      if (centerY >= midY) {
+        tops.push(obj);      // torso / arms → shirt color
+      } else {
+        bottoms.push(obj);   // legs / feet mesh → pants color
       }
     });
 
-    const totalH  = fullBox.max.y - fullBox.min.y;
-    // Head radius: ~13% of total height / 2 (1 head ≈ 1/7.5 body)
-    const hR      = totalH * 0.067;
+    const hR = totalH * 0.067;
     return {
       topMeshes:    tops,
       bottomMeshes: bottoms,
-      modelBottom:  fullBox.min.y,   // floor level
+      modelBottom:  fullBox.min.y,
       headR:        hR,
     };
   }, [scene]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getStoreSearchUrl } from "@/lib/store-urls";
 import dynamic from "next/dynamic";
@@ -20,6 +20,7 @@ interface LookSalvo {
   precoEstimado: number;
   cores: string;
   outfitJson: string;
+  imageUrl?: string | null;
   explicacao?: string;
   pastaId: string | null;
   createdAt: string;
@@ -94,7 +95,14 @@ export default function ColecaoPage() {
   // AI suggestion state
   const [suggestingLook, setSuggestingLook] = useState(false);
   const [suggestedLook, setSuggestedLook] = useState<LookGerado | null>(null);
+  const [suggestCombinacao, setSuggestCombinacao] = useState<{
+    combinacao: string; looks_usados: string[]; pecas_sugeridas: Array<{ look: string; peca: string; motivo: string }>; dica_estilo: string; ocasiao: string;
+  } | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  // Photo upload state
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoTargetId = useRef<string | null>(null);
 
   function designToPeca(d: DesignSalvo): PecaDesignGerada {
     return {
@@ -194,6 +202,43 @@ export default function ColecaoPage() {
     if (res.ok) setDesigns(prev => prev.filter(d => d.id !== id));
   }
 
+  // ── Photo upload helpers ─────────────────────────────────────────────────
+  function resizeImage(file: File, maxPx: number, quality: number): Promise<string> {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+          const canvas = document.createElement("canvas");
+          canvas.width  = Math.round(img.width  * ratio);
+          canvas.height = Math.round(img.height * ratio);
+          canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = e.target!.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhotoUpload(lookId: string, file: File) {
+    setUploadingPhotoId(lookId);
+    try {
+      const dataUrl = await resizeImage(file, 700, 0.78);
+      const res = await fetch(`/api/looks/${lookId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: dataUrl }),
+      });
+      if (res.ok) {
+        setLooks(prev => prev.map(l => l.id === lookId ? { ...l, imageUrl: dataUrl } : l));
+      }
+    } finally {
+      setUploadingPhotoId(null);
+    }
+  }
+
   function handleViewAvatar(look: LookSalvo) {
     sessionStorage.setItem("avatarOutfit", look.outfitJson);
     sessionStorage.setItem("avatarLookName", look.nome);
@@ -214,6 +259,7 @@ export default function ColecaoPage() {
     setSuggestingLook(true);
     setSuggestError(null);
     setSuggestedLook(null);
+    setSuggestCombinacao(null);
     try {
       const payload = source.slice(0, 6).map(l => ({
         nome: l.nome,
@@ -221,6 +267,7 @@ export default function ColecaoPage() {
         ocasiao: l.ocasiao,
         precoEstimado: l.precoEstimado,
         cores: l.cores,
+        imageUrl: l.imageUrl ?? null,
         pecas: l.pecas.map(p => ({ categoria: p.categoria, nome: p.nome, cor: p.cor, tecido: p.tecido, corte: p.corte })),
       }));
       const res = await fetch("/api/sugerir-look", {
@@ -230,7 +277,11 @@ export default function ColecaoPage() {
       });
       if (!res.ok) throw new Error("Erro ao gerar sugestão");
       const data = await res.json();
-      setSuggestedLook(data.look);
+      if (data.tipo === "combinacao") {
+        setSuggestCombinacao(data.resultado);
+      } else {
+        setSuggestedLook(data.look);
+      }
     } catch (err) {
       setSuggestError(err instanceof Error ? err.message : "Erro inesperado");
     } finally {
@@ -256,6 +307,20 @@ export default function ColecaoPage() {
 
   return (
     <div className="px-6 py-12 lg:px-8">
+      {/* Hidden file input for photo upload */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          const id = photoTargetId.current;
+          if (file && id) await handlePhotoUpload(id, file);
+          e.target.value = "";
+        }}
+      />
+
       <div className="mx-auto max-w-6xl">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-3">
@@ -474,23 +539,23 @@ export default function ColecaoPage() {
         )}
 
         {/* ── Sugestão de look modal ───────────────────────────────────────── */}
-        {(suggestingLook || suggestedLook || suggestError) && (
+        {(suggestingLook || suggestedLook || suggestCombinacao || suggestError) && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto"
-            onClick={() => { if (!suggestingLook) { setSuggestedLook(null); setSuggestError(null); } }}>
+            onClick={() => { if (!suggestingLook) { setSuggestedLook(null); setSuggestCombinacao(null); setSuggestError(null); } }}>
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full my-8 overflow-hidden"
               onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold gradient-text">✨ Sugestão da IA</h2>
+                  <h2 className="text-lg font-bold gradient-text">✨ {suggestCombinacao ? "Combinação da IA" : "Sugestão da IA"}</h2>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    {selectedPasta
-                      ? `Baseada nos looks da pasta selecionada`
-                      : `Baseada em toda a sua coleção`}
+                    {suggestCombinacao
+                      ? "Com base nas fotos dos seus looks"
+                      : selectedPasta ? "Baseada nos looks da pasta selecionada" : "Baseada em toda a sua coleção"}
                   </p>
                 </div>
                 {!suggestingLook && (
-                  <button onClick={() => { setSuggestedLook(null); setSuggestError(null); }}
+                  <button onClick={() => { setSuggestedLook(null); setSuggestCombinacao(null); setSuggestError(null); }}
                     className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -509,7 +574,11 @@ export default function ColecaoPage() {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
                     </div>
-                    <p className="text-zinc-400 text-sm">Analisando seu guarda-roupa...</p>
+                    <p className="text-zinc-400 text-sm">
+                      {(filteredLooks.length ? filteredLooks : looks).some(l => l.imageUrl)
+                        ? "Analisando as fotos dos seus looks..."
+                        : "Analisando seu guarda-roupa..."}
+                    </p>
                   </div>
                 )}
                 {suggestError && (
@@ -519,6 +588,25 @@ export default function ColecaoPage() {
                       className="px-4 py-2 rounded-xl text-sm gradient-bg text-white hover:opacity-90 transition-opacity">
                       Tentar novamente
                     </button>
+                  </div>
+                )}
+                {suggestCombinacao && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-zinc-200 leading-relaxed">{suggestCombinacao.combinacao}</p>
+                    <div className="bg-zinc-800/60 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Peças para usar</p>
+                      {suggestCombinacao.pecas_sugeridas.map((p, i) => (
+                        <div key={i} className="text-sm">
+                          <span className="text-zinc-200 font-medium">{p.peca}</span>
+                          <span className="text-zinc-500"> — {p.look}</span>
+                          <p className="text-xs text-zinc-500 mt-0.5">{p.motivo}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-l-2 border-purple-500 pl-3">
+                      <p className="text-xs text-zinc-400 italic">{suggestCombinacao.dica_estilo}</p>
+                    </div>
+                    <p className="text-xs text-zinc-500">📍 Ideal para: {suggestCombinacao.ocasiao}</p>
                   </div>
                 )}
                 {suggestedLook && (
@@ -566,9 +654,25 @@ export default function ColecaoPage() {
                   const isExpanded = expandedLook === look.id;
                   return (
                     <div key={look.id} className={`bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all ${isExpanded ? "md:col-span-2 lg:col-span-3" : ""}`}>
-                      <div className="h-2 flex">
-                        {cores.map((cor, i) => (<div key={i} className="flex-1" style={{ backgroundColor: cor }} />))}
-                      </div>
+                      {/* Photo area */}
+                      {look.imageUrl ? (
+                        <div className="relative h-40 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={look.imageUrl} alt={look.nome} className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => { photoTargetId.current = look.id; photoInputRef.current?.click(); }}
+                            disabled={uploadingPhotoId === look.id}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-black/80 transition-colors"
+                            title="Trocar foto"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="h-2 flex">
+                          {cores.map((cor, i) => (<div key={i} className="flex-1" style={{ backgroundColor: cor }} />))}
+                        </div>
+                      )}
                       <div className="p-6">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="text-lg font-bold">{look.nome}</h3>
@@ -650,6 +754,16 @@ export default function ColecaoPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 7.5l-2.25-1.313M21 7.5v2.25m0-2.25l-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3l2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0 6.75l2.25-1.313M12 21.75V19.5m0 2.25l-2.25-1.313m0-16.875L12 2.25l2.25 1.313M21 14.25v2.25l-2.25 1.313m-13.5 0L3 16.5v-2.25" />
                             </svg>
                             Avatar 3D
+                          </button>
+                          <button
+                            onClick={() => { photoTargetId.current = look.id; photoInputRef.current?.click(); }}
+                            disabled={uploadingPhotoId === look.id}
+                            className="px-3 py-2.5 rounded-xl text-sm bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-colors border border-zinc-700 disabled:opacity-50"
+                            title="Adicionar foto">
+                            {uploadingPhotoId === look.id
+                              ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                              : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            }
                           </button>
                           <button onClick={() => setMovingItem({ id: look.id, type: "look" })}
                             className="px-3 py-2.5 rounded-xl text-sm bg-zinc-800 text-zinc-400 hover:bg-zinc-700 transition-colors border border-zinc-700"

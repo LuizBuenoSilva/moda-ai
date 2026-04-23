@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { gerarLooks } from "@/lib/fashion-engine";
+import { gerarLooks, normalizeStyle } from "@/lib/fashion-engine";
 
 interface AnaliseResult {
   estilo: string;
@@ -103,9 +103,10 @@ export async function POST(req: NextRequest) {
       analise = gerarAnaliseOffline();
     }
 
-    // Generate similar looks based on analysis
+    // Generate similar looks based on analysis — normalize style so it always maps
+    // to a known category (prevents falling back to "casual" on unknown labels)
     const looks = await gerarLooks({
-      estilo: analise.estilo,
+      estilo: normalizeStyle(analise.estilo),
       ocasiao: analise.ocasiao,
       orcamento,
       preferencias: analise.descricao,

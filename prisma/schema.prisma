@@ -33,6 +33,7 @@ model Look {
   explicacao    String
   cores         String   // JSON array de hex colors
   outfitJson    String   // JSON completo para avatar 3D
+  imageUrl      String?  @db.Text  // foto real do look (base64 jpeg)
   pastaId       String?
   pasta         Pasta?   @relation(fields: [pastaId], references: [id])
   userId        String

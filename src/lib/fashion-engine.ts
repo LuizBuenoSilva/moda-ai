@@ -202,16 +202,67 @@ function gerarLooksOffline(input: LookInput): LookGerado[] {
   );
 }
 
+// ── Style name normaliser ─────────────────────────────────────────────────────
+const STYLE_ALIASES: Record<string, string> = {
+  "business": "classico", "business casual": "classico", "formal": "elegante",
+  "luxo": "elegante", "luxury": "elegante", "chique": "elegante",
+  "athleisure": "esportivo", "sport": "esportivo", "sporty": "esportivo",
+  "fitness": "esportivo", "academia": "esportivo",
+  "rock": "grunge", "punk": "grunge", "dark": "grunge",
+  "hipster": "vintage", "retro": "vintage",
+  "cottagecore": "boho", "festival": "boho", "natureza": "boho",
+  "y2k": "streetwear", "hype": "streetwear", "hypebeast": "streetwear",
+  "night out": "elegante", "balada": "elegante", "festa": "elegante",
+  "office": "classico", "trabalho": "classico", "corporativo": "classico",
+  "beach": "casual", "praia": "casual", "verao": "casual",
+  "dark academia": "classico", "academia escura": "classico",
+};
+
+export function normalizeStyle(raw: string): string {
+  const s = raw.toLowerCase().trim();
+  if (PALETAS[s]) return s;
+  for (const [alias, mapped] of Object.entries(STYLE_ALIASES)) {
+    if (s.includes(alias)) return mapped;
+  }
+  // Partial match against known styles
+  for (const known of Object.keys(PALETAS)) {
+    if (s.includes(known) || known.includes(s)) return known;
+  }
+  return "casual";
+}
+
+// ── Random prompt variation to prevent repeated looks ────────────────────────
+const MOOD_HINTS = [
+  "Inspire-se em tendências recentes do Brasil — algo que está em alta agora.",
+  "Prefira combinações de cores ousadas e inusitadas.",
+  "Misture o formal com o casual de forma surpreendente.",
+  "Use peças versáteis que funcionam bem do dia à noite.",
+  "Priorize conforto e estilo ao mesmo tempo.",
+  "Pense em looks para alguém que quer se destacar na multidão.",
+  "Aposte em texturas contrastantes — denim com seda, couro com malha.",
+  "Inspire-se na moda europeia contemporânea adaptada ao clima BR.",
+  "Foque em peças-chave que fazem toda a diferença no visual.",
+  "Pense em minimalismo com um toque de personalidade.",
+];
+
 // ==================== MAIN EXPORT ====================
 
 export async function gerarLooks(input: LookInput): Promise<LookGerado[]> {
+  // Normalise style so any input maps to a known category
+  const estilo = normalizeStyle(input.estilo);
+
   // Try Anthropic API first, fallback to offline engine
   try {
     const anthropic = new Anthropic();
 
+    // Random mood hint prevents the model from always generating the same look
+    const moodHint = MOOD_HINTS[Math.floor(Math.random() * MOOD_HINTS.length)];
+
     const prompt = `Você é um stylist profissional brasileiro. Monte exatamente 3 looks completos.
 
-DADOS: Estilo: ${input.estilo} | Ocasião: ${input.ocasiao} | Orçamento: R$${input.orcamento}${input.genero ? ` | Gênero: ${input.genero}` : ""}${input.preferencias ? ` | Preferências: ${input.preferencias}` : ""}
+DADOS: Estilo: ${estilo} | Ocasião: ${input.ocasiao} | Orçamento: R$${input.orcamento}${input.genero ? ` | Gênero: ${input.genero}` : ""}${input.preferencias ? ` | Referência visual: ${input.preferencias}` : ""}
+
+DIRETRIZ CRIATIVA: ${moodHint}
 
 TABELA DE PREÇOS REAIS BR 2024 (use como referência):
 - Camiseta básica: Renner/C&A R$39-89 | Zara R$99-199 | Reserva/Hering R$59-129
@@ -222,14 +273,15 @@ TABELA DE PREÇOS REAIS BR 2024 (use como referência):
 - Acessório simples: Renner/C&A R$19-69 | Vivara R$89-399
 - Bolsa: Arezzo R$199-499 | Renner R$59-149
 
-REGRAS:
+REGRAS OBRIGATÓRIAS:
 - Cada look: top + bottom + shoes + 1 acessório
 - Preço total de cada look <= R$${input.orcamento}. Distribua proporcionalmente.
-- Cores em hex. 3 looks visualmente diferentes entre si.
+- Cores em hex. Os 3 looks DEVEM ser totalmente diferentes entre si em cor, peça e ocasião.
+- NUNCA repita a mesma combinação de peças entre looks.
 - OBRIGATÓRIO em CADA peça: "lojas" (2-3 lojas BR reais) e "imagemQuery" (5-8 palavras em INGLÊS descrevendo a peça para busca de foto, ex: "white slim fit linen blazer women")
 
 Responda APENAS JSON válido (sem markdown):
-[{"nome":"...","descricao":"...","estilo":"${input.estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2"],"imagemQuery":"..."}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
+[{"nome":"...","descricao":"...","estilo":"${estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2"],"imagemQuery":"..."}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
 
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -246,6 +298,6 @@ Responda APENAS JSON válido (sem markdown):
   } catch {
     // Fallback to offline rule-based engine
     console.log("API indisponível, usando engine offline");
-    return gerarLooksOffline(input);
+    return gerarLooksOffline({ ...input, estilo });
   }
 }

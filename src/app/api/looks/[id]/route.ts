@@ -33,6 +33,34 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId, unauthorized } = await getRequiredUser();
+    if (!userId) return unauthorized!;
+
+    const { id } = await params;
+    const body = await req.json();
+
+    const updated = await prisma.look.updateMany({
+      where: { id, userId },
+      data: {
+        ...(body.imageUrl !== undefined && { imageUrl: body.imageUrl }),
+      },
+    });
+
+    if (!updated.count) {
+      return NextResponse.json({ error: "Look não encontrado" }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Erro ao atualizar look:", error);
+    return NextResponse.json({ error: "Erro ao atualizar look" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
