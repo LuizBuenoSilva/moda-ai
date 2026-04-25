@@ -172,12 +172,21 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
   const skirtH    = H * legHeight * 0.46;
   const skirtCY   = hipY - skirtH * 0.43;                        // centre Y of cylinder
 
-  // — Shoes (all proportional to model height)
-  const shoeW   = H * 0.050;  // half-width of shoe box
-  const shoeLen = H * 0.112;  // shoe length (front-back)
-  const soleH   = H * 0.016;  // sole thickness
-  const upperH  = H * 0.044;  // upper shoe height
-  const bootH   = H * 0.210;  // boot shaft height
+  // — Shoes: capsule base radius + scale → smooth rounded shape
+  const capR    = H * 0.018;   // base capsule radius
+  const capLen  = H * 0.038;   // base capsule length (Y axis before scale)
+  const shoeW   = H * 0.052;   // final half-width
+  const shoeLen = H * 0.115;   // final shoe length (Z)
+  const soleH   = H * 0.015;   // sole thickness (Y)
+  const upperH  = H * 0.040;   // upper height
+  const bootH   = H * 0.210;   // boot shaft height
+  // Scale factors for capsule → shoe sole/upper shapes
+  const soleScX = shoeW   / (capR * 2);
+  const soleScY = soleH   / (capLen + capR * 2);
+  const soleScZ = shoeLen / (capR * 2);
+  const upScX   = shoeW   * 0.88 / (capR * 2);
+  const upScY   = upperH  / (capLen + capR * 2);
+  const upScZ   = shoeLen * 0.84 / (capR * 2);
 
   return (
     <group>
@@ -200,26 +209,33 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
       )}
 
       {/* ════ SHOES ════
-           Box geometry — easier to align than capsules.
-           footXL/footXR come from detected foot mesh positions (or proportional defaults). */}
+           Capsule geometry scaled to give a smooth rounded shoe silhouette.
+           footXL/footXR come from detected foot positions (or proportional defaults). */}
       {([footXL, footXR] as const).map((footX, i) => (
         <group key={i}>
-          {/* Black sole */}
-          <mesh position={[footX, modelBottom + soleH * 0.5, footZ]}>
-            <boxGeometry args={[shoeW * 1.80, soleH, shoeLen]} />
+          {/* Sole — flat oval, elongated in Z */}
+          <mesh
+            position={[footX, modelBottom + soleH * 0.5, footZ]}
+            scale={[soleScX, soleScY, soleScZ]}
+          >
+            <capsuleGeometry args={[capR, capLen, 6, 14]} />
             <meshStandardMaterial color="#111111" roughness={0.92} metalness={0} />
           </mesh>
 
-          {/* Coloured upper */}
-          <mesh position={[footX, modelBottom + soleH + upperH * 0.5, footZ - shoeLen * 0.06]}>
-            <boxGeometry args={[shoeW * 1.60, upperH, shoeLen * 0.84]} />
-            <meshStandardMaterial color={shoeColor} roughness={0.55} metalness={0.03} />
+          {/* Upper — slightly narrower + shorter than sole, rounded toe */}
+          <mesh
+            position={[footX, modelBottom + soleH + upperH * 0.5, footZ - shoeLen * 0.04]}
+            rotation={[-0.06, 0, 0]}
+            scale={[upScX, upScY, upScZ]}
+          >
+            <capsuleGeometry args={[capR, capLen, 8, 14]} />
+            <meshStandardMaterial color={shoeColor} roughness={0.52} metalness={0.04} />
           </mesh>
 
-          {/* Boot shaft (only when isBoot) */}
+          {/* Boot shaft */}
           {isBoot && (
             <mesh position={[footX, modelBottom + soleH + upperH + bootH * 0.5, footZ - shoeLen * 0.08]}>
-              <cylinderGeometry args={[shoeW * 0.54, shoeW * 0.60, bootH, 10]} />
+              <cylinderGeometry args={[shoeW * 0.52, shoeW * 0.58, bootH, 12]} />
               <meshStandardMaterial color={shoeColor} roughness={0.52} metalness={0.04} />
             </mesh>
           )}
