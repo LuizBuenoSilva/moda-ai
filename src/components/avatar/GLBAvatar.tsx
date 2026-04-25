@@ -113,7 +113,6 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
 
   const isSkirt   = outfitParams?.bottom.isSkirt    ?? false;
   const legHeight = outfitParams?.bottom.legHeight  ?? 1.0;
-  const sleeveLen = outfitParams?.top.sleeveLength  ?? 0.4;  // 0 = regata, 1 = coat
   const isBoot    = outfitParams?.shoes.isBoot      ?? false;
 
   // ── Apply colours to GLB meshes ─────────────────────────────────────────────
@@ -165,12 +164,7 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
   }, [scene, skinKey]);
 
   // ── Computed 3-D dimensions ─────────────────────────────────────────────────
-  const { totalH: H, modelBottom, hipY, shoulderY, footXL, footXR, footZ } = dims;
-
-  // — Sleeves
-  const sleeveActualLen = H * 0.24 * sleeveLen;  // physical length in scene units
-  const armR            = H * 0.033;              // arm cylinder radius
-  const shoulderOffsetX = H * 0.107;             // half shoulder width
+  const { totalH: H, modelBottom, hipY, footXL, footXR, footZ } = dims;
 
   // — Skirt
   const skirtTopR = H * 0.108;                                    // waist radius
@@ -189,25 +183,6 @@ export default function GLBAvatar({ outfitParams, appearance }: Props) {
     <group>
       <primitive object={scene} />
 
-      {/* ════ SLEEVES ════
-           Added as capsule geometry — length depends on top type:
-           0 = regata (no sleeves), 0.3 = t-shirt, 0.6+ = shirt/jacket */}
-      {sleeveLen > 0 && ([-1, 1] as const).map((side, i) => {
-        // Arm tilted ~20° below horizontal, extending from shoulder outward
-        const tiltAngle = 0.20; // radians
-        const cx = side * (shoulderOffsetX + sleeveActualLen * 0.5 * Math.cos(tiltAngle));
-        const cy = shoulderY - sleeveActualLen * 0.5 * Math.sin(tiltAngle) - H * 0.008;
-        return (
-          <mesh
-            key={i}
-            position={[cx, cy, 0]}
-            rotation={[0, 0, side * (Math.PI / 2 + tiltAngle)]}
-          >
-            <capsuleGeometry args={[armR, sleeveActualLen, 8, 10]} />
-            <meshStandardMaterial color={topColor} roughness={topRough} metalness={0} />
-          </mesh>
-        );
-      })}
 
       {/* ════ SKIRT ════
            Flared cylinder hidden when outfit is pants/shorts.
