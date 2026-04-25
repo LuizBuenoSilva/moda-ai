@@ -91,14 +91,14 @@ model PecaDesign {
 }
 
 model User {
-  id              String    @id @default(cuid())
+  id              String      @id @default(cuid())
   name            String?
-  email           String?   @unique
+  email           String?     @unique
   emailVerified   DateTime?
   image           String?
   passwordHash    String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   accounts        Account[]
   sessions        Session[]
   pastas          Pasta[]
@@ -106,6 +106,42 @@ model User {
   designs         PecaDesign[]
   avatarProfile   AvatarProfile?
   homeLooks       HomeLook[]
+  feedLooks       FeedLook[]
+  feedLikes       FeedLike[]
+  feedSaves       FeedSave[]
+}
+
+model FeedLook {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl  String     @db.Text
+  titulo    String
+  descricao String?
+  tags      String?    // JSON array
+  curtidas  FeedLike[]
+  salvos    FeedSave[]
+  createdAt DateTime   @default(now())
+}
+
+model FeedLike {
+  feedLookId String
+  feedLook   FeedLook @relation(fields: [feedLookId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([feedLookId, userId])
+}
+
+model FeedSave {
+  feedLookId String
+  feedLook   FeedLook @relation(fields: [feedLookId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([feedLookId, userId])
 }
 
 model Account {

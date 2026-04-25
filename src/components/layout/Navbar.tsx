@@ -10,6 +10,7 @@ const links = [
   { href: "/designer", label: "Designer" },
   { href: "/inspiracao", label: "Inspiração" },
   { href: "/colecao", label: "Coleção" },
+  { href: "/comunidade", label: "Comunidade" },
   { href: "/avatar", label: "Avatar 3D" },
 ];
 
