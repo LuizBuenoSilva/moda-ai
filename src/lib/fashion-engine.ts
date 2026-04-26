@@ -51,10 +51,13 @@ const PECAS: PecaDB[] = [
   { nome: "Bota Chelsea de couro com elástico lateral", descricao: "Bota Chelsea clássica com bico arredondado", categoria: "shoes", estilos: ["elegante", "classico", "grunge", "urbano"], precoMin: 199, precoMax: 399, cores: ["#1a1a2e", "#3d3d3d", "#8b4513"], tecido: "couro", corte: null, generos: ["masculino", "feminino", "unissex"], outfitType: "bota", outfitMaterial: "couro", outfitFit: "regular", lojas: ["Democrata", "Ferracini", "Arezzo"] },
   { nome: "Sapato social Derby de couro polido", descricao: "Sapato social com acabamento brilhante e sola de borracha", categoria: "shoes", estilos: ["elegante", "classico"], precoMin: 179, precoMax: 349, cores: ["#1a1a2e", "#3d3d3d", "#8b4513"], tecido: "couro", corte: null, generos: ["masculino", "unissex"], outfitType: "sapato_social", outfitMaterial: "couro", outfitFit: "regular", lojas: ["Democrata", "Ferracini", "Di Pollini"] },
   { nome: "Tênis esportivo de corrida com amortecimento", descricao: "Tênis com tecnologia de amortecimento e mesh respirável", categoria: "shoes", estilos: ["esportivo", "casual", "streetwear"], precoMin: 199, precoMax: 399, cores: ["#000000", "#1a237e", "#b71c1c", "#ffffff"], tecido: "mesh", corte: null, generos: ["masculino", "feminino", "unissex"], outfitType: "tenis", outfitMaterial: "sintetico", outfitFit: "regular", lojas: ["Nike", "Adidas", "Centauro"] },
-  { nome: "Sandália de tiras de couro", descricao: "Sandália rasteira com tiras de couro natural", categoria: "shoes", estilos: ["boho", "casual", "romantico"], precoMin: 79, precoMax: 159, cores: ["#d4a373", "#8b4513", "#000000"], tecido: "couro", corte: null, generos: ["feminino", "unissex"], outfitType: "sandalia", outfitMaterial: "couro", outfitFit: "regular", lojas: ["Arezzo", "Melissa", "Havaianas"] },
+  { nome: "Sandália de tiras de couro", descricao: "Sandália rasteira com tiras de couro natural", categoria: "shoes", estilos: ["boho", "casual", "romantico"], precoMin: 79, precoMax: 159, cores: ["#d4a373", "#8b4513", "#000000"], tecido: "couro", corte: null, generos: ["feminino"], outfitType: "sandalia", outfitMaterial: "couro", outfitFit: "regular", lojas: ["Arezzo", "Melissa", "Havaianas"] },
   { nome: "Bota coturno de couro com cadarço", descricao: "Coturno robusto com solado tratorado e cadarço", categoria: "shoes", estilos: ["grunge", "streetwear", "urbano"], precoMin: 199, precoMax: 349, cores: ["#000000", "#1a1a2e", "#3d3d3d"], tecido: "couro", corte: null, generos: ["masculino", "feminino", "unissex"], outfitType: "bota", outfitMaterial: "couro", outfitFit: "regular", lojas: ["Dr. Martens", "Renner", "Zattini"] },
   { nome: "Mocassim de camurça com sola flexível", descricao: "Mocassim confortável de camurça com costura aparente", categoria: "shoes", estilos: ["classico", "preppy", "casual", "elegante"], precoMin: 139, precoMax: 259, cores: ["#8b4513", "#2f4f4f", "#1a1a2e", "#d4c5a9"], tecido: "camurça", corte: null, generos: ["masculino", "unissex"], outfitType: "mocassim", outfitMaterial: "camurca", outfitFit: "regular", lojas: ["Democrata", "Reserva", "Ferracini"] },
   { nome: "Sapatilha de bico fino com laço", descricao: "Sapatilha delicada com bico fino e detalhe de laço", categoria: "shoes", estilos: ["romantico", "classico", "elegante", "preppy"], precoMin: 89, precoMax: 169, cores: ["#000000", "#ffb6c1", "#f5f5dc", "#800020"], tecido: "couro sintético", corte: null, generos: ["feminino"], outfitType: "sapatilha", outfitMaterial: "sintetico", outfitFit: "regular", lojas: ["Arezzo", "Schutz", "Renner"] },
+  // === SHOES — masculino específico ===
+  { nome: "Tênis chunky sola grossa colorblock", descricao: "Tênis dad shoe com sola alta e blocos de cor", categoria: "shoes", estilos: ["streetwear", "casual", "urbano"], precoMin: 199, precoMax: 399, cores: ["#ffffff", "#1a1a2e", "#b71c1c"], tecido: "mesh", corte: null, generos: ["masculino", "unissex"], outfitType: "tenis", outfitMaterial: "sintetico", outfitFit: "regular", lojas: ["Nike", "New Balance", "Adidas"] },
+  { nome: "Slip-on de lona básico", descricao: "Tênis sem cadarço de lona com bico arredondado", categoria: "shoes", estilos: ["casual", "streetwear", "preppy"], precoMin: 79, precoMax: 149, cores: ["#000000", "#ffffff", "#1a1a2e"], tecido: "lona", corte: null, generos: ["masculino", "feminino", "unissex"], outfitType: "tenis", outfitMaterial: "sintetico", outfitFit: "regular", lojas: ["Vans", "Converse", "Renner"] },
 
   // === ACCESSORIES ===
   { nome: "Relógio analógico com pulseira de couro", descricao: "Relógio elegante com mostrador minimalista", categoria: "accessory", estilos: ["elegante", "classico", "minimalista", "casual"], precoMin: 79, precoMax: 199, cores: ["#c0c0c0", "#ffd700", "#1a1a2e"], tecido: null, corte: null, generos: ["masculino", "feminino", "unissex"], outfitType: "relogio", outfitMaterial: "couro", outfitFit: "regular", lojas: ["Casio", "Technos", "Amazon"] },
@@ -116,9 +119,15 @@ function gerarLookOffline(input: LookInput, paleta: string[], nomeLook: string):
   const budget = input.orcamento;
   const genero = input.genero || "unissex";
 
-  const filterPeca = (p: PecaDB) =>
-    p.estilos.includes(input.estilo) &&
-    (p.generos.includes(genero) || p.generos.includes("unissex"));
+  const filterPeca = (p: PecaDB) => {
+    if (!p.estilos.includes(input.estilo)) return false;
+    // "masculino" → only items explicitly tagged masculine (not items tagged only as feminine/unissex)
+    if (genero === "masculino") return p.generos.includes("masculino");
+    // "feminino" → items tagged feminine or unissex
+    if (genero === "feminino")  return p.generos.includes("feminino") || p.generos.includes("unissex");
+    // "unissex" / not specified → any item tagged unissex or the gender
+    return p.generos.includes("unissex");
+  };
 
   const tops = shuffle(PECAS.filter((p) => p.categoria === "top" && filterPeca(p)));
   const bottoms = shuffle(PECAS.filter((p) => p.categoria === "bottom" && filterPeca(p)));
@@ -258,9 +267,31 @@ export async function gerarLooks(input: LookInput): Promise<LookGerado[]> {
     // Random mood hint prevents the model from always generating the same look
     const moodHint = MOOD_HINTS[Math.floor(Math.random() * MOOD_HINTS.length)];
 
+    const generoLabel = input.genero || "unissex";
+    const budgetMin   = Math.round(input.orcamento * 0.82);
+    const budgetMax   = input.orcamento;
+    const bTop   = Math.round(input.orcamento * 0.26);
+    const bBot   = Math.round(input.orcamento * 0.30);
+    const bShoe  = Math.round(input.orcamento * 0.30);
+    const bAcc   = Math.round(input.orcamento * 0.14);
+
+    // Gender-specific clothing rules to prevent cross-gender items
+    const generoRegras =
+      generoLabel === "masculino"
+        ? "GÊNERO MASCULINO: use apenas peças masculinas. PROIBIDO: saias, cropped, sapatilhas, sandálias de tiras, brincos, leggings, bodies. Use: camisetas, camisas, blazers, calças, shorts, jaquetas, tênis, botas, cintos, relógios, bonés, óculos."
+        : generoLabel === "feminino"
+        ? "GÊNERO FEMININO: use peças femininas ou unissex. Pode usar saias, vestidos, cropped, sapatilhas, sandálias, brincos, bolsas, colares."
+        : "GÊNERO UNISSEX: use peças neutras que funcionam para qualquer gênero.";
+
+    const imagemExemplo = generoLabel === "masculino"
+      ? "dark slim fit chino pants men fashion"
+      : generoLabel === "feminino"
+      ? "white midi pleated skirt women fashion"
+      : "oversized beige linen shirt unisex fashion";
+
     const prompt = `Você é um stylist profissional brasileiro. Monte exatamente 3 looks completos.
 
-DADOS: Estilo: ${estilo} | Ocasião: ${input.ocasiao} | Orçamento: R$${input.orcamento}${input.genero ? ` | Gênero: ${input.genero}` : ""}${input.preferencias ? ` | Referência visual: ${input.preferencias}` : ""}
+DADOS: Estilo: ${estilo} | Ocasião: ${input.ocasiao} | Gênero: ${generoLabel}${input.preferencias ? ` | Referência visual: ${input.preferencias}` : ""}
 
 DIRETRIZ CRIATIVA: ${moodHint}
 
@@ -273,15 +304,21 @@ TABELA DE PREÇOS REAIS BR 2024 (use como referência):
 - Acessório simples: Renner/C&A R$19-69 | Vivara R$89-399
 - Bolsa: Arezzo R$199-499 | Renner R$59-149
 
+ORÇAMENTO: R$${budgetMax} por look
+- Gaste entre R$${budgetMin} e R$${budgetMax} em CADA look (nunca abaixo de R$${budgetMin})
+- Distribuição sugerida: top ~R$${bTop} | bottom ~R$${bBot} | calçado ~R$${bShoe} | acessório ~R$${bAcc}
+- Ajuste as lojas ao orçamento: orçamento baixo → Renner/C&A/Shein; alto → Zara/Reserva/marcas premium
+
 REGRAS OBRIGATÓRIAS:
+- ${generoRegras}
 - Cada look: top + bottom + shoes + 1 acessório
-- Preço total de cada look <= R$${input.orcamento}. Distribua proporcionalmente.
-- Cores em hex. Os 3 looks DEVEM ser totalmente diferentes entre si em cor, peça e ocasião.
+- Os 3 looks DEVEM ser totalmente diferentes entre si em cor, peça e estilo.
 - NUNCA repita a mesma combinação de peças entre looks.
-- OBRIGATÓRIO em CADA peça: "lojas" (2-3 lojas BR reais) e "imagemQuery" (5-8 palavras em INGLÊS descrevendo a peça para busca de foto, ex: "white slim fit linen blazer women")
+- Cores em hex.
+- OBRIGATÓRIO em CADA peça: "lojas" (2-3 lojas BR reais) e "imagemQuery" (5-8 palavras em INGLÊS para busca de foto, ex: "${imagemExemplo}")
 
 Responda APENAS JSON válido (sem markdown):
-[{"nome":"...","descricao":"...","estilo":"${estilo}","ocasiao":"${input.ocasiao}","genero":${input.genero ? `"${input.genero}"` : "null"},"precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2"],"imagemQuery":"..."}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
+[{"nome":"...","descricao":"...","estilo":"${estilo}","ocasiao":"${input.ocasiao}","genero":"${generoLabel}","precoEstimado":0,"orcamento":${input.orcamento},"explicacao":"...","cores":["#hex"],"pecas":[{"categoria":"top|bottom|shoes|accessory","nome":"...","descricao":"...","cor":"#hex","preco":0,"tecido":"...","corte":"slim|regular|oversized|wide|null","detalhes":"...","lojas":["Loja1","Loja2"],"imagemQuery":"..."}],"outfitJson":{"top":{"type":"tshirt|camisa|jaqueta|moletom|regata|blazer|cropped|sueter","color":"#hex","material":"algodao|seda|couro|jeans|linho|sintetico|la","fit":"slim|regular|oversized"},"bottom":{"type":"calca|shorts|saia|saia_longa|jogger|legging","color":"#hex","material":"jeans|algodao|couro|seda|sintetico","fit":"slim|regular|wide"},"shoes":{"type":"tenis|bota|sapato_social|sandalia|salto|mocassim|sapatilha","color":"#hex","material":"couro|camurca|sintetico|tecido"},"accessories":[{"type":"chapeu|bone|colar|pulseira|relogio|bolsa|oculos|brinco|cinto|anel|lenco|mochila","color":"#hex"}]}}]`;
 
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
