@@ -11,6 +11,7 @@ const links = [
   { href: "/inspiracao", label: "Inspiração" },
   { href: "/colecao", label: "Coleção" },
   { href: "/comunidade", label: "Comunidade" },
+  { href: "/marketplace", label: "Marketplace" },
   { href: "/avatar", label: "Avatar 3D" },
 ];
 

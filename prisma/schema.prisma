@@ -109,6 +109,63 @@ model User {
   feedLooks       FeedLook[]
   feedLikes       FeedLike[]
   feedSaves       FeedSave[]
+  listings        Listing[]
+  messagesSent    MarketMsg[] @relation("MsgFrom")
+  messagesReceived MarketMsg[] @relation("MsgTo")
+  ordersBuyer     Order[]     @relation("OrderBuyer")
+  ordersSeller    Order[]     @relation("OrderSeller")
+}
+
+// ─── Marketplace ──────────────────────────────────────────────────────────────
+
+model Listing {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo      String
+  descricao   String?
+  preco       Float
+  categoria   String      // vestuario | calcados | acessorios | bolsas | outros
+  tamanho     String?     // PP | P | M | G | GG | único | 34..48 | etc.
+  condicao    String      // novo | seminovo | usado
+  imageUrls   String      @db.Text  // JSON array of base64
+  whatsapp    String?     // ex: "5511999999999"
+  status      String      @default("ativo")  // ativo | vendido | pausado
+  views       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  messages    MarketMsg[]
+  orders      Order[]
+}
+
+model MarketMsg {
+  id          String   @id @default(cuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  fromUserId  String
+  toUserId    String
+  fromUser    User     @relation("MsgFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User     @relation("MsgTo",   fields: [toUserId],   references: [id], onDelete: Cascade)
+  content     String
+  lido        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id])
+  buyerId     String
+  sellerId    String
+  buyer       User     @relation("OrderBuyer",  fields: [buyerId],  references: [id])
+  seller      User     @relation("OrderSeller", fields: [sellerId], references: [id])
+  valor       Float
+  status      String   @default("pendente")  // pendente | pago | enviado | concluido | cancelado
+  pixCode     String?  @db.Text  // copia-e-cola Pix
+  pixQrCode   String?  @db.Text  // base64 do QR Code
+  mpPaymentId String?  // ID do pagamento no Mercado Pago
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model FeedLook {
