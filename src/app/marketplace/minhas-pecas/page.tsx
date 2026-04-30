@@ -170,7 +170,12 @@ export default function MinhasPecasPage() {
     if (!confirm("Tem certeza que deseja excluir este anúncio?")) return;
     setDeleting(id);
     const res = await fetch(`/api/marketplace/${id}`, { method: "DELETE" });
-    if (res.ok) setListings(prev => prev.filter(l => l.id !== id));
+    if (res.ok) {
+      setListings(prev => prev.filter(l => l.id !== id));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(`Erro ao excluir: ${data.error ?? "tente novamente"}`);
+    }
     setDeleting(null);
   }
 

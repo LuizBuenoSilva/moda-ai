@@ -92,8 +92,17 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!userId) return unauthorized!;
 
     const { id } = await params;
-    const deleted = await prisma.listing.deleteMany({ where: { id, userId } });
-    if (!deleted.count) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+
+    // Verificar dono
+    const listing = await prisma.listing.findUnique({ where: { id }, select: { userId: true } });
+    if (!listing || listing.userId !== userId) {
+      return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
+    }
+
+    // Deletar relacionados antes (FK sem cascade)
+    await prisma.order.deleteMany({ where: { listingId: id } });
+    await prisma.marketMsg.deleteMany({ where: { listingId: id } });
+    await prisma.listing.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (err) {
