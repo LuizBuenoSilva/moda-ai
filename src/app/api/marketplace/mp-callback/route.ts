@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
   if (error || !code || !state) {
-    return NextResponse.redirect(`${base}/marketplace/minhas-pecas?mp=error`);
+    console.error("mp-callback: missing params", { error, code: !!code, state: !!state });
+    return NextResponse.redirect(`${base}/marketplace/minhas-pecas?mp=error&reason=${error ?? "missing_params"}`);
   }
 
   const clientId     = process.env.MP_CLIENT_ID;
@@ -39,8 +40,9 @@ export async function GET(req: NextRequest) {
     const tokenData = await tokenRes.json();
 
     if (!tokenRes.ok || !tokenData.access_token) {
-      console.error("MP token error:", tokenData);
-      return NextResponse.redirect(`${base}/marketplace/minhas-pecas?mp=error`);
+      console.error("MP token error:", JSON.stringify(tokenData));
+      const reason = tokenData.error ?? tokenData.message ?? "token_failed";
+      return NextResponse.redirect(`${base}/marketplace/minhas-pecas?mp=error&reason=${encodeURIComponent(reason)}`);
     }
 
     // Salvar no banco vinculado ao userId (state)

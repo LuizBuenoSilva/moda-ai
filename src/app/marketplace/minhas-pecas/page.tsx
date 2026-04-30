@@ -113,11 +113,16 @@ function MPConnectPanel() {
         </div>
       )}
       {mpParam === "error" && (
-        <div className="mt-3 flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Erro ao conectar. Tente novamente.
+        <div className="mt-3 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Erro ao conectar. Tente novamente.
+          </div>
+          {searchParams.get("reason") && (
+            <p className="mt-1 text-red-500/70 pl-6">Motivo: {searchParams.get("reason")}</p>
+          )}
         </div>
       )}
       {mpParam === "not_configured" && (
