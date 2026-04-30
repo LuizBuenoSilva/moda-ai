@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface ListingCard {
@@ -18,7 +18,6 @@ interface ListingCard {
   hasWhatsapp: boolean;
   isMine: boolean;
   createdAt: string;
-  views?: number;
 }
 
 const STATUS_LABEL: Record<string, string> = { ativo: "Ativo", vendido: "Vendido", inativo: "Pausado" };
@@ -27,6 +26,118 @@ const STATUS_COLOR: Record<string, string> = {
   vendido: "text-red-400 bg-red-500/15",
   inativo: "text-zinc-400 bg-zinc-500/15",
 };
+
+function MPConnectPanel() {
+  const [connected, setConnected]   = useState<boolean | null>(null);
+  const [mpUserId, setMpUserId]     = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const searchParams = useSearchParams();
+
+  const mpParam = searchParams.get("mp");
+
+  const loadStatus = useCallback(async () => {
+    const res  = await fetch("/api/marketplace/mp-status");
+    const data = await res.json();
+    setConnected(data.connected);
+    setMpUserId(data.mpUserId);
+  }, []);
+
+  useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  async function handleConnect() {
+    setConnecting(true);
+    const res  = await fetch("/api/marketplace/mp-connect");
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+    else setConnecting(false);
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    await fetch("/api/marketplace/mp-status", { method: "DELETE" });
+    setConnected(false);
+    setMpUserId(null);
+    setDisconnecting(false);
+  }
+
+  return (
+    <div className={`rounded-2xl border p-4 mb-6 ${connected ? "bg-emerald-500/5 border-emerald-500/20" : "bg-zinc-900 border-zinc-800"}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          {/* MP Logo inline SVG */}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${connected ? "bg-emerald-500/20" : "bg-zinc-800"}`}>
+            <svg className={`w-6 h-6 ${connected ? "text-emerald-400" : "text-zinc-400"}`} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold text-zinc-200 text-sm">
+              {connected === null ? "Verificando..." : connected ? "Mercado Pago conectado" : "Conectar Mercado Pago"}
+            </p>
+            <p className="text-xs text-zinc-500">
+              {connected
+                ? `Conta #${mpUserId} · compras via Pix vão direto para você`
+                : "Conecte sua conta para receber pagamentos Pix automaticamente"}
+            </p>
+          </div>
+        </div>
+
+        {connected === false && (
+          <button
+            onClick={handleConnect}
+            disabled={connecting}
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {connecting ? "Redirecionando..." : "Conectar conta"}
+          </button>
+        )}
+        {connected === true && (
+          <button
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 text-xs transition-colors disabled:opacity-50"
+          >
+            {disconnecting ? "..." : "Desconectar"}
+          </button>
+        )}
+      </div>
+
+      {/* Feedback do callback OAuth */}
+      {mpParam === "connected" && (
+        <div className="mt-3 flex items-center gap-2 text-emerald-400 text-xs bg-emerald-500/10 rounded-lg px-3 py-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Conta conectada com sucesso! Agora você recebe pagamentos Pix direto.
+        </div>
+      )}
+      {mpParam === "error" && (
+        <div className="mt-3 flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Erro ao conectar. Tente novamente.
+        </div>
+      )}
+      {mpParam === "not_configured" && (
+        <div className="mt-3 text-xs text-zinc-500 bg-zinc-800 rounded-lg px-3 py-2">
+          Integração com Mercado Pago ainda não configurada pelo administrador.
+        </div>
+      )}
+
+      {/* Info sobre taxa */}
+      {!connected && connected !== null && (
+        <div className="mt-3 text-xs text-zinc-500 flex items-start gap-1.5">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Taxa da plataforma: 5% por venda. O restante vai direto para sua conta Mercado Pago.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MinhasPecasPage() {
   const { status } = useSession();
@@ -85,6 +196,10 @@ export default function MinhasPecasPage() {
         </Link>
       </div>
 
+      {/* Painel MP Connect */}
+      {status === "authenticated" && <MPConnectPanel />}
+
+      {/* Lista de anúncios */}
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -98,7 +213,7 @@ export default function MinhasPecasPage() {
           ))}
         </div>
       ) : listings.length === 0 ? (
-        <div className="text-center py-20">
+        <div className="text-center py-16">
           <div className="text-5xl mb-4">👗</div>
           <p className="text-zinc-400 text-lg font-medium mb-2">Nenhum anúncio ainda</p>
           <p className="text-zinc-500 text-sm mb-6">Comece vendendo suas peças!</p>
@@ -145,18 +260,11 @@ export default function MinhasPecasPage() {
                     Editar
                   </Link>
                   {item.status !== "vendido" && (
-                    <button
-                      onClick={() => toggleStatus(item.id, item.status)}
-                      className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-                    >
+                    <button onClick={() => toggleStatus(item.id, item.status)} className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
                       {item.status === "ativo" ? "Pausar" : "Reativar"}
                     </button>
                   )}
-                  <button
-                    onClick={() => deleteListing(item.id)}
-                    disabled={deleting === item.id}
-                    className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                  >
+                  <button onClick={() => deleteListing(item.id)} disabled={deleting === item.id} className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50">
                     {deleting === item.id ? "Excluindo..." : "Excluir"}
                   </button>
                 </div>

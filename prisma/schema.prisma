@@ -97,6 +97,11 @@ model User {
   emailVerified   DateTime?
   image           String?
   passwordHash    String?
+  // Mercado Pago Marketplace Connect
+  mpAccessToken   String?     @db.Text
+  mpRefreshToken  String?     @db.Text
+  mpUserId        String?
+  mpPublicKey     String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   accounts        Account[]
